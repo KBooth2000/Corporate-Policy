@@ -5,7 +5,7 @@ import { buildMix, attachLimiter } from './mixer';
 import { Player } from './sequencer';
 import { TRACKS } from './tracks/index';
 import { SFX, LOOPS } from './sfxdefs';
-import { renderSfxDef, renderLoopDef, renderOffline, offlineCtor } from './sfxbank';
+import { renderSfxDef, renderLoopDef, renderOffline, offlineCtor, sfxRate, LOW_RATE } from './sfxbank';
 import { speak } from './voice';
 import { dbToGain, gain, compileTrackWarnings } from './qa-helpers';
 
@@ -100,7 +100,7 @@ export async function renderMusic(track: MusicTrack, o: MusicRenderOpts = {}): P
 export async function renderSfxPlayed(name: SfxName, variant = 0): Promise<{ played: AudioBuffer; raw: AudioBuffer }> {
   const def = SFX[name];
   const seed = (name.length * 131 + variant * 7919 + name.charCodeAt(0) * 17) >>> 0;
-  const raw = (await renderSfxDef(def, seed, null))!;
+  const raw = (await renderSfxDef(def, seed, null, sfxRate(name)))!;
   const OAC = offlineCtor()!;
   const ctx = new OAC(2, Math.ceil((raw.duration + 0.3) * SR), SR);
   const mix = await mixed(ctx);
@@ -113,7 +113,7 @@ export async function renderSfxPlayed(name: SfxName, variant = 0): Promise<{ pla
 
 export async function renderLoopPlayed(name: LoopName): Promise<{ played: AudioBuffer; raw: AudioBuffer; wrapJump: number }> {
   const def = LOOPS[name];
-  const raw = (await renderLoopDef(def, 99, null))!;
+  const raw = (await renderLoopDef(def, 99, null, LOW_RATE))!;
   // wrap discontinuity relative to the loop's typical sample-to-sample step (1 = perfectly natural)
   let wrap = 0;
   for (let c = 0; c < raw.numberOfChannels; c++) {

@@ -5,6 +5,10 @@ import { Syn } from './synth';
 import { ARng } from './core';
 
 export const SFX_RATE = 32000;
+/** Most SFX are rendered at 24 kHz to save memory; only bright/sparkly sounds keep 32 kHz. */
+export const LOW_RATE = 24000;
+const BRIGHT = new Set<string>(['glass_shatter', 'window_smash', 'shield_break', 'screen_smash', 'pickup_cash', 'ui_purchase', 'commission_ding', 'ui_unlock', 'ui_notify', 'ui_login', 'stinger_unlock', 'stinger_victory', 'stinger_boss_defeat', 'confetti_fire', 'energy_drink', 'teleport', 'hit_sharp', 'crit', 'sprinkler', 'extinguisher_burst', 'server_spark', 'lift_chime', 'microwave_ding', 'telegraph', 'wellbeing_chime', 'golden_parachute', 'rebrand']);
+export function sfxRate(name: string): number { return BRIGHT.has(name) ? SFX_RATE : LOW_RATE; }
 
 type OACCtor = new (ch: number, len: number, sr: number) => OfflineAudioContext;
 export function offlineCtor(): OACCtor | null {
@@ -44,14 +48,18 @@ export function postProcess(src: AudioBuffer, like: BaseAudioContext | null, tri
   }
   let len = src.length;
   if (trim) {
+    // trim the tail once it stays below -54 dB relative to the peak
+    let pk = 0;
+    for (const d of data) for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i]));
+    const thr = Math.max(1e-5, pk * 0.002);
     let last = 0;
-    for (const d of data) for (let i = d.length - 1; i > last; i--) if (Math.abs(d[i]) > 2e-4) { last = i; break; }
+    for (const d of data) for (let i = d.length - 1; i > last; i--) if (Math.abs(d[i]) > thr) { last = i; break; }
     len = Math.min(src.length, last + Math.floor(sr * 0.02));
   }
   let peak = 0;
   for (const d of data) for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(d[i]));
   const k = peak > 1e-6 ? 0.89 / peak : 0;
-  const fi = Math.floor(sr * 0.0015), fo = Math.min(Math.floor(sr * 0.012), Math.floor(len / 4));
+  const fi = Math.floor(sr * 0.0015), fo = Math.min(Math.floor(sr * 0.04), Math.floor(len / 4));
   const out = makeBuffer(like, ch, Math.max(1, len), sr);
   for (let c = 0; c < ch; c++) {
     const d = data[c], o = out.getChannelData(c);
@@ -110,7 +118,7 @@ export async function renderLoopDef(def: LoopDef, seed: number, like: BaseAudioC
 export function variantCount(n: SfxName): number {
   const d = SFX[n];
   const v = d.vars ?? 2;
-  return d.d > 1.3 ? 1 : d.d > 0.7 ? Math.min(v, 2) : v;
+  return d.d > 1.0 ? 1 : d.d > 0.45 ? Math.min(v, 2) : v;
 }
 
 export class SfxBank {
@@ -147,10 +155,10 @@ export class SfxBank {
       try {
         const seed = (job.name.length * 131 + job.variant * 7919 + job.name.charCodeAt(0) * 17) >>> 0;
         if (job.loop) {
-          const b = await renderLoopDef(LOOPS[job.name as LoopName], seed, this.like);
+          const b = await renderLoopDef(LOOPS[job.name as LoopName], seed, this.like, LOW_RATE);
           if (b) { this.loops.set(job.name, b); this.bytes += b.length * b.numberOfChannels * 4; this.onLoopReady?.(job.name); }
         } else {
-          const b = await renderSfxDef(SFX[job.name as SfxName], seed, this.like);
+          const b = await renderSfxDef(SFX[job.name as SfxName], seed, this.like, sfxRate(job.name));
           if (b) {
             const arr = this.bufs.get(job.name) ?? [];
             arr.push(b); this.bufs.set(job.name, arr);

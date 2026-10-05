@@ -62,7 +62,7 @@ await page.evaluate(({ god, speed }) => {
     }
     // pick up nearby reward/weapon/interactables (rewards first)
     const its = w.interactables.filter((i) => i.enabled());
-    const reward = its.find((i) => i.priority === 1);
+    const reward = its.find((i) => i.priority === 1 && /^Take/.test(i.label));
     if (reward) { if (Math.hypot(reward.x - p.x, reward.y - p.y) < 14) press('interact'); else goTo(reward.x, reward.y); return; }
     if (!w.floorCleared) {
       // walk to the nearest uncleared room

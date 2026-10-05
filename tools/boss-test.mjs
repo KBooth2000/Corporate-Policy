@@ -42,6 +42,20 @@ async function runBoss(act) {
       until(fn, max = 12) { let t = 0; while (!fn() && t < max) { for (let i = 0; i < 6; i++) app.step(); t += 0.1; } app.draw(); return fn(); },
       bot: { on: false, pressed: new Set() },
       tank() { const p = window.__t.gs().player; p.maxHp = 5000; p.hp = 5000; },
+      /** BFS over walkable tiles (world.isSolidTile + world.propBlock) from a px point; returns a dist field. */
+      flood(from) {
+        const w = window.__t.gs().world, m = w.map, W = m.w;
+        const d = new Int32Array(W * m.h).fill(-1);
+        const sx = Math.floor(from.x / 16), sy = Math.floor(from.y / 16);
+        const q = [sy * W + sx]; d[q[0]] = 0;
+        while (q.length) { const c = q.shift(); const x = c % W, y = (c / W) | 0;
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= m.h) continue; const n = ny * W + nx;
+            if (d[n] >= 0 || w.isSolidTile(nx, ny) || w.propBlock[n]) continue; d[n] = d[c] + 1; q.push(n); } }
+        return d;
+      },
+      reach(from, to) { const d = window.__t.flood(from); const W = window.__t.gs().world.map.w; return d[Math.floor(to.y / 16) * W + Math.floor(to.x / 16)] >= 0; },
+      /** Walk the player (real movement input, no teleport) towards a px target along the BFS gradient. */
+      walkTo(to) { window.__t.bot.walk = { to, field: null, t: 0 }; },
     };
     const gs = window.__t.gs();
     const p = gs.player;
@@ -56,6 +70,17 @@ async function runBoss(act) {
     const w0 = gs.world;
     const orig = gs.update.bind(gs);
     gs.update = (dt) => {
+      if (bot.walk) {
+        const wk = bot.walk, pl = gs.player, w = gs.world, W = w.map.w;
+        if (!wk.field || (wk.t++ % 30) === 0) wk.field = window.__t.flood(wk.to); // dist field from the target
+        const tx = Math.floor(pl.x / 16), ty = Math.floor(pl.y / 16);
+        let best = null, bd = wk.field[ty * W + tx];
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const v = wk.field[(ty + dy) * W + tx + dx]; if (v >= 0 && (bd < 0 || v < bd) && !(dx && dy && (wk.field[ty * W + tx + dx] < 0 || wk.field[(ty + dy) * W + tx] < 0))) { bd = v; best = [dx, dy]; } }
+        const goal = best ? { x: (tx + best[0] + 0.5) * 16, y: (ty + best[1] + 0.5) * 16 } : wk.to;
+        const dx = goal.x - pl.x, dy = goal.y - pl.y, dd = Math.hypot(dx, dy) || 1;
+        pl.ctl.move = dd < 2 ? { x: 0, y: 0 } : { x: dx / dd, y: dy / dd };
+        pl.ctl.aimDir = pl.ctl.move;
+      }
       if (bot.on) {
         const b = window.__t.boss();
         const pl = gs.player;
@@ -78,15 +103,34 @@ async function runBoss(act) {
   const shot = async (name) => { await page.evaluate(() => window.__cp.app.draw()); await page.screenshot({ path: `${out}/${tag}-${name}.png` }); };
   const state = () => page.evaluate(() => { const b = window.__t.boss(); const gs = window.__t.gs(); return b ? { mode: b.mode, phase: b.phase, hp: Math.round(b.hp), maxHp: b.maxHp, cut: !!gs?.world.cutscene, scene: window.__cp.app.top?.name, php: Math.round(gs.player.hp) } : { scene: window.__cp.app.top?.name }; });
 
-  // 1) walk into the arena → intro card
-  await page.evaluate(() => {
-    const gs = window.__t.gs(); const b = window.__t.boss(); const w = gs.world; const p = gs.player;
+  // 0) map checks: generator validator + flood fill from the real spawn to the boss (no teleporting)
+  const chk = await page.evaluate(async (act) => {
+    const { validateFloor } = await import('/src/game/gen/validate.ts');
+    const gs = window.__t.gs(); const b = window.__t.boss(); const w = gs.world; const m = w.map;
+    let errs = validateFloor(m);
+    // the CEO's office and rooftop are deliberately sealed: phase transitions move the fight there (spec 6.5 arena changes)
+    if (act === 4) errs = errs.filter((e) => !/^room [23] unreachable|room [23] spawn point unreachable|room [23] reward unreachable|room graph disconnected/.test(e));
+    const doorsOk = m.doors.every((d) => d.roomA >= 0 && d.roomB >= 0);
+    const r = m.rooms[b.cfg.arenaRoom];
+    const target = act === 4 ? r.rewardPoint : { x: b.x, y: b.y + 4 };
+    return { errs, doorsOk, reachBoss: window.__t.reach(m.spawn, target), spawn: m.spawn };
+  }, act);
+  log('validateFloor', chk.errs.length ? JSON.stringify(chk.errs) : 'OK', 'doors join rooms:', chk.doorsOk, 'boss reachable from spawn:', chk.reachBoss);
+  if (chk.errs.length || !chk.doorsOk || !chk.reachBoss) { failures++; log('FAIL: arena map invalid / boss unreachable from spawn'); }
+
+  // 1) walk in from the spawn (real movement) → intro card
+  const walked = await page.evaluate(() => {
+    const gs = window.__t.gs(); const b = window.__t.boss(); const w = gs.world;
     window.__t.tank();
     const r = w.map.rooms[b.cfg.arenaRoom];
-    const entry = b.qaEntry ? b.qaEntry() : { x: (r.tx + 3) * 16, y: (r.ty + r.th / 2) * 16 };
-    p.x = entry.x; p.y = entry.y;
-    window.__t.step(0.3);
+    const entry = b.qaEntry ? b.qaEntry() : { x: (r.tx + 4) * 16, y: (r.ty + r.th / 2) * 16 };
+    window.__t.walkTo(entry);
+    const ok = window.__t.until(() => b.mode === 'intro', 25);
+    window.__t.bot.walk = null; gs.player.ctl.move = { x: 0, y: 0 };
+    return { ok, at: [Math.round(gs.player.x), Math.round(gs.player.y)], room: w.currentRoom };
   });
+  log('walk-in from spawn:', JSON.stringify(walked));
+  if (!walked.ok) { failures++; log('FAIL: could not walk from the spawn into the arena'); }
   await page.evaluate(() => window.__t.until(() => window.__t.boss().mode === 'intro', 3));
   await page.evaluate(() => window.__t.step(1.6));
   await shot('01-intro');
@@ -136,6 +180,9 @@ async function runBoss(act) {
     await shot('90-rewards');
     const fin = await page.evaluate(() => { const gs = window.__t.gs(); return { cleared: gs.world.floorCleared, hold: gs.world.holdClear, leave: gs.run.flags.bossLeave, hp: gs.player.hp, bosses: gs.run.log.bossesKilled }; });
     log('rewards', JSON.stringify(fin));
+    const ex = await page.evaluate(() => { const gs = window.__t.gs(); const w = gs.world; return w.map.exits.map((e) => ({ kind: e.kind, available: e.available, reach: window.__t.reach(gs.player, { x: e.x, y: e.y }) })); });
+    log('exits after the fight:', JSON.stringify(ex));
+    if (!ex.length || ex.some((e) => !e.reach)) { failures++; log('FAIL: exits unreachable after the boss'); }
     if (!fin.cleared || fin.leave !== 5) { failures++; log('FAIL: floor not cleared / leave not granted'); }
   } else {
     // ending sequence
@@ -226,9 +273,39 @@ async function runDirector() {
   await page.close();
 }
 
-const acts = which === 'all' ? [1, 2, 3, 4, 'director'] : [which === 'director' ? 'director' : Number(which)];
+/** Several seeds per boss floor: validator + spawn→boss flood fill, without fighting. */
+async function sweepSeeds() {
+  const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
+  await page.routeWebSocket(/.*/, () => {});
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  for (const floor of [5, 10, 15, 20]) for (const seed of [1, 777, 4242, 90210]) {
+    await page.goto('about:blank'); // a hash-only change would not reload the game
+    await page.goto(`${BASE}#play&seed=${seed}&floor=${floor}`);
+    await page.waitForTimeout(1500);
+    const r = await page.evaluate(async (floor) => {
+      const { validateFloor } = await import('/src/game/gen/validate.ts');
+      const app = window.__cp.app; const gs = app.scenes.find((x) => x.name === 'gameplay'); const b = gs?.data.boss; const w = gs.world; const m = w.map;
+      if (!b) return { err: 'no boss' };
+      let errs = validateFloor(m);
+      if (floor === 20) errs = errs.filter((e) => !/^room [23] unreachable|room [23] spawn point unreachable|room [23] reward unreachable|room graph disconnected/.test(e));
+      const d = new Int32Array(m.w * m.h).fill(-1); const W = m.w; const s0 = Math.floor(m.spawn.y / 16) * W + Math.floor(m.spawn.x / 16); const q = [s0]; d[s0] = 0;
+      while (q.length) { const c = q.shift(); const x = c % W, y = (c / W) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, n = ny * W + nx; if (nx < 0 || ny < 0 || nx >= W || ny >= m.h || d[n] >= 0 || w.isSolidTile(nx, ny) || w.propBlock[n]) continue; d[n] = d[c] + 1; q.push(n); } }
+      const t = floor === 20 ? m.rooms[b.cfg.arenaRoom].rewardPoint : { x: b.x, y: b.y + 4 };
+      const exitsReach = m.exits.every((e) => d[Math.floor(e.y / 16) * W + Math.floor(e.x / 16)] >= 0);
+      return { errs, reach: d[Math.floor(t.y / 16) * W + Math.floor(t.x / 16)] >= 0, doors: m.doors.every((dd) => dd.roomA >= 0 && dd.roomB >= 0), exitsReach };
+    }, floor);
+    const ok = !r.err && !r.errs.length && r.reach && r.doors && r.exitsReach;
+    console.log(`[sweep] floor ${floor} seed ${seed}:`, ok ? 'OK' : 'FAIL ' + JSON.stringify(r));
+    if (!ok) failures++;
+  }
+  if (errors.length) { failures++; console.log('[sweep] page errors', errors.slice(0, 5)); }
+  await page.close();
+}
+
+const acts = which === 'all' ? ['sweep', 1, 2, 3, 4, 'director'] : [which === 'director' || which === 'sweep' ? which : Number(which)];
 for (const a of acts) {
-  try { if (a === 'director') await runDirector(); else await runBoss(a); } catch (e) { failures++; console.log(`[boss ${a}] EXCEPTION`, e); }
+  try { if (a === 'director') await runDirector(); else if (a === 'sweep') await sweepSeeds(); else await runBoss(a); } catch (e) { failures++; console.log(`[boss ${a}] EXCEPTION`, e); }
 }
 await browser.close();
 console.log(failures ? `FAILED (${failures})` : 'ALL BOSSES OK');

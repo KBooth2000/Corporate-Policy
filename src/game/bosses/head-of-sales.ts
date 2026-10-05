@@ -9,7 +9,7 @@ import type { GameplayScene } from '../../scenes/gameplay';
 import type { FloorRequest, LightDef } from '../world-types';
 import { TILE, T } from '../world-types';
 import { Boss, Layer, ScriptOpts, ScriptCutscene, easeOut, clamp, lerp, angleTo, dist, fromAngle } from './boss';
-import { buildArena, Grid, coreLobby, ArenaMap, mark, roomOfMark } from './arena';
+import { buildArena, Grid, coreLobby, lobbyDoor, ArenaMap, mark, roomOfMark } from './arena';
 import { MAT } from '../gen/materials';
 import { salesArt } from '../../art/bosses/sales';
 import { gongSprite, screenSprite, contractSprite } from '../../art/bosses/props';
@@ -38,7 +38,7 @@ function buildMap(req: FloorRequest): ArenaMap {
   g.fill(15, 1, 48, 1, 'W');
   g.fill(50, 4, 50, 21, 'W');
   coreLobby(g, 0, 6);
-  g.fill(13, 11, 13, 13, 'D');
+  lobbyDoor(g, 11, 13);
   g.set(32, 13, 'a'); g.set(32, 8, 'b'); g.set(32, 4, 'g');
   for (const [x, y] of [[15, 5], [15, 21], [48, 6], [48, 20]]) g.set(x, y, 'r');
   for (const [x, y] of [[20, 22], [32, 22], [44, 22], [21, 3], [43, 3], [48, 13]]) g.set(x, y, 's');
@@ -54,7 +54,7 @@ function buildMap(req: FloorRequest): ArenaMap {
     props: [
       { kind: 'boss_gong', tx: 31, ty: 3, fw: 2, fh: 1, cw: 30, ch: 10, solid: true },
       ...desks.map((d) => ({ kind: d.kind, tx: d.tx, ty: d.ty })),
-      { kind: 'plant_large', tx: 15, ty: 3 }, { kind: 'plant_large', tx: 48, ty: 3 }, { kind: 'water_cooler', tx: 15, ty: 13 },
+      { kind: 'plant_large', tx: 15, ty: 3 }, { kind: 'plant_large', tx: 48, ty: 3 }, { kind: 'water_cooler', tx: 15, ty: 18 },
     ],
   });
 }

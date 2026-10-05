@@ -15,7 +15,7 @@ export interface Mix {
 }
 
 /** Static trims so that music sits under SFX and voices at default settings. */
-export const TRIM = { music: 0.62, sfx: 1.0, voice: 0.95, pre: 0.8 };
+export const TRIM = { music: 0.62, sfx: 1.0, voice: 0.6, pre: 0.8 };
 
 export function buildMix(ctx: AC, dest: AudioNode): Mix {
   const masterVol = gain(ctx, 1, dest);

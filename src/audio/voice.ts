@@ -179,7 +179,7 @@ export function speak(ctx: AC, dest: AudioNode, t: number, seed: number, kind: V
     case 'pain': {
       const d = r.range(0.22, 0.38);
       syls = [{ c: r.pick(['', '', 'h'] as Cons[]), v: r.pick(['a', 'uh', 'ae', 'er'] as VK[]), coda: r.pick(['', '', 'k', 'h'] as Cons[]), dur: d, f0a: r.range(1.5, 1.9), f0b: r.range(1.0, 1.2), amp: 1 }];
-      p.rough = Math.max(p.rough, 0.4); p.breath = Math.max(p.breath, 0.12); loud = 0.7;
+      p.rough = Math.max(p.rough, 0.4); p.breath = Math.max(p.breath, 0.12); loud = 0.5;
       break;
     }
     case 'death': {
@@ -187,7 +187,7 @@ export function speak(ctx: AC, dest: AudioNode, t: number, seed: number, kind: V
         { c: '', v: r.pick(['a', 'ae', 'o'] as VK[]), coda: '', dur: r.range(0.4, 0.6), f0a: 1.45, f0b: 0.85, amp: 1 },
         { c: 'h', v: 'uh', coda: '', dur: r.range(0.35, 0.5), f0a: 0.8, f0b: 0.55, amp: 0.55 },
       ];
-      p.rough = Math.max(p.rough, 0.45); p.breath = Math.max(p.breath, 0.15); loud = 0.65;
+      p.rough = Math.max(p.rough, 0.45); p.breath = Math.max(p.breath, 0.15); loud = 0.45;
       break;
     }
     case 'effort': syls = [{ c: r.pick(['h', 'h', ''] as Cons[]), v: r.pick(['uh', 'u', 'a'] as VK[]), coda: r.pick(['p', 'k', ''] as Cons[]), dur: r.range(0.12, 0.18), f0a: 1.25, f0b: 1.1, amp: 1 }]; loud = 0.65; break;
@@ -199,8 +199,8 @@ export function speak(ctx: AC, dest: AudioNode, t: number, seed: number, kind: V
       break;
     }
     case 'gasp': {
-      syls = [{ c: 'h', v: 'a', coda: '', dur: r.range(0.3, 0.42), f0a: 1.3, f0b: 1.5, amp: 0.18 }];
-      p.breath = 0.6; loud = 0.6;
+      syls = [{ c: 'h', v: 'a', coda: '', dur: r.range(0.3, 0.42), f0a: 1.3, f0b: 1.5, amp: 0.3 }];
+      p.breath = 1.6; loud = 1.4;
       break;
     }
     case 'chant': {
@@ -211,7 +211,7 @@ export function speak(ctx: AC, dest: AudioNode, t: number, seed: number, kind: V
       const pitches = [0, 0, 2, -3];
       for (let i = 0; i < 4; i++) phrase.push({ c: r.pick(['k', 't', 'd', 's', 'n', 'b'] as Cons[]), v: r.pick(['o', 'a', 'e', 'i'] as VK[]), coda: i === 3 ? 'n' : '', dur: beat * (i === 3 ? 1.6 : 0.95), f0a: Math.pow(2, pitches[i] / 12), f0b: Math.pow(2, pitches[i] / 12), amp: i === 0 ? 1 : 0.85 });
       syls = phrase.concat(phrase.map((s) => ({ ...s })));
-      wet = 0.25; loud = 0.5;
+      wet = 0.25; loud = 0.38;
       break;
     }
     case 'speech': {

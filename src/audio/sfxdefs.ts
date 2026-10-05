@@ -95,7 +95,7 @@ function crowd(s: Syn, t: number, d: number, v: number, n: number, vowel: keyof 
 // ------------------------------------------------------------------ the table
 export const SFX: Record<SfxName, SfxDef> = {
   // ===== UI / CorpOS
-  ui_move: { d: 0.08, lvl: -15, vars: 2, lim: 2, pri: 0, b: (s) => { s.tone({ w: 'triangle', f: 1180, f2: 1260, d: 0.045, v: 0.6, a: 0.002 }); s.nz({ d: 0.006, v: 0.2, hp: 5000 }); } },
+  ui_move: { d: 0.08, lvl: -12, vars: 2, lim: 2, pri: 0, b: (s) => { s.tone({ w: 'triangle', f: 1180, f2: 1260, d: 0.045, v: 0.6, a: 0.002 }); s.nz({ d: 0.006, v: 0.2, hp: 5000 }); } },
   ui_select: { d: 0.2, lvl: -12, vars: 2, lim: 2, pri: 0, b: (s) => { s.beep(0, 880, 0.05, 0.4, 'triangle'); s.beep(0.055, 1320, 0.09, 0.45, 'triangle'); s.tone({ f: 2640, t: 0.055, d: 0.12, v: 0.12 }); } },
   ui_back: { d: 0.2, lvl: -13, vars: 2, lim: 2, pri: 0, b: (s) => { s.beep(0, 1100, 0.05, 0.4, 'triangle'); s.beep(0.055, 740, 0.09, 0.42, 'triangle'); } },
   ui_error: { d: 0.3, lvl: -11, vars: 1, lim: 2, pri: 0, b: (s) => { const b = s.bp(700, 1.2); s.tone({ w: 'square', f: 196, d: 0.09, v: 0.6, hold: true, to: b }); s.tone({ w: 'square', f: 185, t: 0.12, d: 0.12, v: 0.6, hold: true, to: b }); } },
@@ -103,17 +103,17 @@ export const SFX: Record<SfxName, SfxDef> = {
   ui_email: { d: 1.0, lvl: -11, vars: 1, lim: 2, pri: 1, stereo: true, b: (s) => { const r = s.room(1, 0.25); chimeSeq(s, [76, 81, 88], 0.07, 'marimba', 1, r); s.whoosh(0, 0.25, 0.2, 2000, 7000, r); } },
   ui_purchase: { d: 1.0, lvl: -9, vars: 2, lim: 2, pri: 1, b: (s) => { s.nz({ d: 0.05, v: 0.5, bp: 3500, q: 1.5 }); s.nz({ t: 0.04, d: 0.12, v: 0.3, hp: 4000 }); bell(s, 0.06, 2093, 0.6, 0.35); bell(s, 0.16, 2637, 0.7, 0.35); coinLayer(s, 0.1, 0.6); coinLayer(s, 0.2, 0.4); } },
   ui_unlock: { d: 1.6, lvl: -9, vars: 1, lim: 1, pri: 2, stereo: true, b: (s) => { const r = s.room(1.6, 0.35); chimeSeq(s, [79, 83, 86, 91, 95], 0.06, 'glock', 0.9, r, 1.2); s.nz({ t: 0.1, d: 1.0, v: 0.12, hp: 7000, a: 0.2 }); } },
-  ui_typing: { d: 0.08, lvl: -16, vars: 4, lim: 3, pri: 0, b: (s) => { s.nz({ d: 0.008, v: 0.6, bp: s.r.range(2500, 4500), q: 2 }); s.thump(0.002, 260, 120, 0.03, 0.35); s.nz({ t: 0.03, d: 0.006, v: 0.25, bp: 2000, q: 2 }); } },
+  ui_typing: { d: 0.08, lvl: -13, vars: 4, lim: 3, pri: 0, b: (s) => { s.nz({ d: 0.008, v: 0.6, bp: s.r.range(2500, 4500), q: 2 }); s.thump(0.002, 260, 120, 0.03, 0.35); s.nz({ t: 0.03, d: 0.006, v: 0.25, bp: 2000, q: 2 }); } },
   ui_login: { d: 2.6, lvl: -9, vars: 1, lim: 1, pri: 2, stereo: true, b: (s) => { const r = s.room(2.5, 0.45); s.note('pad', 0, 60, 1.6, 0.8, { att: 0.3, cut: 2200 }, r); s.note('pad', 0, 64, 1.6, 0.6, { att: 0.3, cut: 2200 }, r); s.note('pad', 0, 71, 1.6, 0.5, { att: 0.3, cut: 2200 }, r); chimeSeq(s, [76, 79, 86, 84], 0.16, 'glock', 0.9, r, 1.4); } },
   ui_logout: { d: 2.0, lvl: -10, vars: 1, lim: 1, pri: 2, stereo: true, b: (s) => { const r = s.room(2, 0.4); chimeSeq(s, [84, 79, 76, 72], 0.15, 'glock', 0.85, r, 1.2); s.note('pad', 0.1, 57, 1.1, 0.6, { att: 0.2, cut: 1500 }, r); } },
-  ui_toggle: { d: 0.1, lvl: -14, vars: 2, lim: 2, pri: 0, b: (s) => { s.nz({ d: 0.006, v: 0.6, bp: 3200, q: 2 }); s.tone({ f: 1600, d: 0.02, v: 0.2 }); s.nz({ t: 0.035, d: 0.006, v: 0.4, bp: 2400, q: 2 }); } },
-  ui_slide: { d: 0.22, lvl: -15, vars: 2, lim: 2, pri: 0, b: (s) => { s.whoosh(0, 0.18, 0.5, 1500, 6000); } },
+  ui_toggle: { d: 0.1, lvl: -11, vars: 2, lim: 2, pri: 0, b: (s) => { s.nz({ d: 0.006, v: 0.6, bp: 3200, q: 2 }); s.tone({ f: 1600, d: 0.02, v: 0.2 }); s.nz({ t: 0.035, d: 0.006, v: 0.4, bp: 2400, q: 2 }); } },
+  ui_slide: { d: 0.22, lvl: -12, vars: 2, lim: 2, pri: 0, b: (s) => { s.whoosh(0, 0.18, 0.5, 1500, 6000); } },
 
   // ===== building
   lift_chime: { d: 2.0, lvl: -8, vars: 1, lim: 1, pri: 3, stereo: true, b: (s) => { const r = s.room(1.5, 0.3); bell(s, 0, 1318.5, 1.6, 0.45, r); bell(s, 0.42, 1046.5, 1.8, 0.45, r); } },
   lift_doors: { d: 1.4, lvl: -10, vars: 1, lim: 1, b: (s) => { s.nz({ d: 0.9, v: 0.35, bp: 900, q: 0.8, a: 0.15, hold: true, rel: 0.2 }); motor(s, 0, 1.0, 70, 0.15); s.thump(1.05, 120, 60, 0.15, 0.6); s.nz({ t: 1.05, d: 0.06, v: 0.4, lp: 1500 }); } },
   lift_motor: { d: 2.2, lvl: -11, vars: 1, lim: 1, b: (s) => { motor(s, 0, 2.0, 48, 0.3, 62); s.tone({ f: 380, f2: 560, d: 2.0, v: 0.05, hold: true, a: 0.4, rel: 0.3, lin: true }); s.nz({ d: 2.0, v: 0.15, lp: 400, k: 'brown', hold: true, a: 0.3, rel: 0.3 }); } },
-  stairs_steps: { d: 1.6, lvl: -12, vars: 2, lim: 1, b: (s) => { const r = s.room(1.4, 0.35); for (let i = 0; i < 5; i++) stepLayer(s, i * 0.28 + s.r.range(-0.02, 0.02), 0.9, 0.9); void r; } },
+  stairs_steps: { d: 1.6, lvl: -9, vars: 2, lim: 1, b: (s) => { const r = s.room(1.4, 0.35); for (let i = 0; i < 5; i++) stepLayer(s, i * 0.28 + s.r.range(-0.02, 0.02), 0.9, 0.9); void r; } },
   door_lock: { d: 0.9, lvl: -6, vars: 2, lim: 2, pri: 2, b: (s) => { impactLayer(s, 0, 1.2, 0.6); s.nz({ t: 0.05, d: 0.12, v: 0.4, bp: 1800, q: 2, f2: 900 }); s.ring(0.0, 420, [1, 2.4, 3.9], 0.35, 0.25); s.beep(0.25, 330, 0.25, 0.25, 'square'); s.tone({ w: 'sawtooth', f: 55, d: 0.5, t: 0.2, v: 0.12, hold: true, rel: 0.2, to: s.lp(300) }); } },
   door_unlock: { d: 0.9, lvl: -7, vars: 2, lim: 2, pri: 2, b: (s) => { impactLayer(s, 0, 0.8, 0.7); s.nz({ t: 0.04, d: 0.1, v: 0.35, bp: 1200, q: 2, f2: 2400 }); s.beep(0.12, 660, 0.08, 0.3, 'triangle'); s.beep(0.21, 990, 0.12, 0.3, 'triangle'); s.nz({ t: 0.1, d: 0.5, v: 0.12, hp: 3000, a: 0.02 }); } },
   alarm: { d: 1.6, lvl: -8, vars: 1, lim: 1, pri: 3, b: (s) => { const b = s.bp(1200, 0.7); for (let i = 0; i < 6; i++) s.tone({ w: 'square', f: i % 2 ? 784 : 988, t: i * 0.25, d: 0.24, v: 0.5, hold: true, a: 0.005, rel: 0.01, to: b }); } },
@@ -124,7 +124,7 @@ export const SFX: Record<SfxName, SfxDef> = {
   car_engine: { d: 2.4, lvl: -9, vars: 1, lim: 1, b: (s) => { for (let i = 0; i < 5; i++) s.nz({ t: i * 0.11, d: 0.08, v: 0.4, lp: 500, k: 'brown' }); const lp = s.lp(600, 2); s.tone({ w: 'sawtooth', f: 32, f2: 75, glide: 0.6, t: 0.55, d: 1.7, v: 0.6, hold: true, a: 0.05, rel: 0.3, to: lp }); s.chopped(0.55, 1.7, 0.4, 28, 400, 0.8); } },
 
   // ===== player
-  step: { d: 0.1, lvl: -18, vars: 4, lim: 3, pri: 0, b: (s) => stepLayer(s, 0, 1, s.r.range(0.2, 0.7)) },
+  step: { d: 0.1, lvl: -14, vars: 4, lim: 3, pri: 0, b: (s) => stepLayer(s, 0, 1, s.r.range(0.2, 0.7)) },
   dash: { d: 0.35, lvl: -9, vars: 3, lim: 2, pri: 0, b: (s) => { s.whoosh(0, 0.28, 0.9, 500, 4500); s.nz({ d: 0.04, v: 0.3, bp: 3000, q: 4, f2: 4500 }); } },
   swing_light: { d: 0.25, lvl: -10, vars: 3, lim: 4, pri: 0, b: (s) => s.whoosh(0, 0.17 * s.r.vary(0.15), 0.9, 800, 5000) },
   swing_heavy: { d: 0.45, lvl: -8, vars: 3, lim: 3, pri: 0, b: (s) => { s.whoosh(0, 0.36 * s.r.vary(0.1), 1, 250, 2500); s.whoosh(0.05, 0.25, 0.4, 900, 4000); } },
@@ -150,7 +150,7 @@ export const SFX: Record<SfxName, SfxDef> = {
   pickup_heal: { d: 0.8, lvl: -10, vars: 2, lim: 2, pri: 1, b: (s) => { [72, 76, 79, 84].forEach((m, i) => s.note('vibes', i * 0.05, m, 0.3, 0.7, { ped: 0.2 })); s.nz({ d: 0.4, v: 0.12, hp: 6000, a: 0.05 }); } },
   pickup_item: { d: 0.6, lvl: -9, vars: 2, lim: 2, pri: 1, b: (s) => { s.tone({ f: 500, f2: 1400, d: 0.08, v: 0.5 }); s.note('glock', 0.06, 86, 0.5, 0.9); s.note('glock', 0.12, 93, 0.5, 0.7); } },
   weapon_break: { d: 0.8, lvl: -6, vars: 2, lim: 2, pri: 1, b: (s) => { s.nz({ d: 0.03, v: 0.9, hp: 1500 }); s.ticks(0, 0.4, 12, 2500, 0.45); s.thump(0, 200, 80, 0.12, 0.6); s.ring(0.01, 1400, [1, 2.4], 0.2, 0.2); } },
-  out_of_ammo: { d: 0.3, lvl: -11, vars: 2, lim: 2, pri: 0, b: (s) => { s.nz({ d: 0.008, v: 0.8, bp: 3000, q: 3 }); s.nz({ t: 0.12, d: 0.008, v: 0.6, bp: 2600, q: 3 }); s.tone({ f: 1200, d: 0.02, v: 0.15 }); } },
+  out_of_ammo: { d: 0.3, lvl: -10, vars: 2, lim: 2, pri: 0, b: (s) => { s.nz({ d: 0.008, v: 0.8, bp: 3000, q: 3 }); s.nz({ t: 0.12, d: 0.008, v: 0.6, bp: 2600, q: 3 }); s.tone({ f: 1200, d: 0.02, v: 0.15 }); } },
   stapler_fire: { d: 0.3, lvl: -8, vars: 3, lim: 4, pri: 0, b: (s) => { s.nz({ d: 0.01, v: 1, bp: 3500, q: 2 }); s.thump(0, 260, 110, 0.04, 0.6); s.ring(0.004, s.r.range(1800, 2400), [1, 2.6], 0.12, 0.25); s.nz({ t: 0.03, d: 0.04, v: 0.3, bp: 2000, q: 4, f2: 3000 }); } },
   nailgun_fire: { d: 0.35, lvl: -7, vars: 3, lim: 4, pri: 0, b: (s) => { s.nz({ d: 0.07, v: 0.8, hp: 1200, a: 0.001 }); s.nz({ d: 0.012, v: 0.9, bp: 2800, q: 2 }); s.thump(0, 300, 100, 0.05, 0.7); s.ring(0.005, 2900, [1, 2.2], 0.08, 0.2); } },
   laser_fire: { d: 0.35, lvl: -8, vars: 3, lim: 4, pri: 0, b: (s) => { s.fm(0, 1600, 1.5, 3, 0.22, 0.5, undefined, 280); s.tone({ w: 'square', f: 2200, f2: 400, d: 0.15, v: 0.12, to: s.lp(4000) }); } },
@@ -192,7 +192,7 @@ export const SFX: Record<SfxName, SfxDef> = {
   rebrand: { d: 1.4, lvl: -8, vars: 1, lim: 2, stereo: true, b: (s) => { const r = s.room(1.4, 0.3); s.whoosh(0, 0.45, 0.6, 400, 6000, r); s.fm(0.4, 1046, 3.5, 3, 0.8, 0.3, r); chimeSeq(s, [84, 88, 91], 0.07, 'glock', 0.8, r); } },
   mark: { d: 0.6, lvl: -9, vars: 1, lim: 3, b: (s) => { s.beep(0, 1760, 0.05, 0.4, 'triangle'); s.beep(0.08, 1760, 0.05, 0.4, 'triangle'); s.tone({ f: 3520, t: 0.16, d: 0.3, v: 0.2 }); } },
   promotion: { d: 2.2, lvl: -7, vars: 1, lim: 1, stereo: true, b: (s) => { const r = s.room(2, 0.35); [[67, 71, 74], [67, 71, 74], [72, 76, 79]].forEach((c, i) => c.forEach((m) => s.note('brass', [0, 0.14, 0.3][i], m, i === 2 ? 1.1 : 0.1, 0.95, { att: 0.01 }, r))); s.note('crash', 0.3, 0, 0, 0.6, {}, r); } },
-  paper_rustle: { d: 0.6, lvl: -12, vars: 3, lim: 3, b: (s) => { for (let i = 0; i < 9; i++) s.nz({ t: s.r.range(0, 0.4), d: s.r.range(0.02, 0.08), v: s.r.range(0.2, 0.6), bp: s.r.range(2500, 6000), q: 1.2 }); } },
+  paper_rustle: { d: 0.6, lvl: -10, vars: 3, lim: 3, b: (s) => { for (let i = 0; i < 9; i++) s.nz({ t: s.r.range(0, 0.4), d: s.r.range(0.02, 0.08), v: s.r.range(0.2, 0.6), bp: s.r.range(2500, 6000), q: 1.2 }); } },
   phone_ring: { d: 2.2, lvl: -9, vars: 1, lim: 1, pri: 3, b: (s) => { const b = s.bp(1400, 1.5); for (let ring = 0; ring < 2; ring++) for (let i = 0; i < 16; i++) s.tone({ w: 'square', f: i % 2 ? 1300 : 1600, t: ring * 1.1 + i * 0.05, d: 0.05, v: 0.4, hold: true, a: 0.002, rel: 0.005, to: b }); } },
   energy_drink: { d: 1.4, lvl: -8, vars: 2, lim: 1, b: (s) => { s.nz({ d: 0.02, v: 0.9, bp: 2500, q: 2 }); s.nz({ t: 0.01, d: 0.35, v: 0.35, hp: 3000, a: 0.002 }); s.grains(0.05, 0.6, 30, 3000, 8000, 0.06, 0.02); for (let i = 0; i < 3; i++) s.nz({ t: 0.6 + i * 0.22, d: 0.1, v: 0.3, bp: 400, q: 2, k: 'pink' }); } },
 
@@ -218,7 +218,7 @@ export const SFX: Record<SfxName, SfxDef> = {
   kettle: { d: 2.4, lvl: -10, vars: 1, lim: 1, b: (s) => { s.nz({ d: 1.6, v: 0.4, lp: 800, k: 'brown', hold: true, a: 0.5, rel: 0.3 }); s.grains(0, 1.6, 40, 300, 900, 0.08, 0.03); s.tone({ f: 1800, f2: 2600, t: 0.8, d: 1.2, v: 0.3, hold: true, a: 0.4, rel: 0.1, vib: [6, 30], lin: true }); s.nz({ t: 2.15, d: 0.02, v: 0.5, bp: 2000, q: 3 }); } },
   vending_buy: { d: 2.0, lvl: -9, vars: 1, lim: 1, b: (s) => { s.beep(0, 1500, 0.06, 0.3, 'square'); s.beep(0.1, 1500, 0.06, 0.3, 'square'); motor(s, 0.25, 0.9, 140, 0.15, 150); s.thump(1.3, 160, 70, 0.15, 0.9); s.ring(1.3, 700, [1, 2.6, 4.1], 0.3, 0.3); s.nz({ t: 1.3, d: 0.08, v: 0.4, lp: 1500 }); } },
   fall_whistle: { d: 1.8, lvl: -9, vars: 2, lim: 1, b: (s) => s.tone({ f: 1800, f2: 350, d: 1.5, v: 0.35, hold: true, a: 0.05, rel: 0.1, vib: [6, 20] }) },
-  splat_far: { d: 1.0, lvl: -14, vars: 2, lim: 2, b: (s) => { const r = s.verb(2, 0.6); const lp = s.lp(900, 0.7, r); s.thump(0, 100, 45, 0.15, 0.7, lp); s.nz({ d: 0.15, v: 0.5, bp: 600, f2: 200, q: 1, to: lp }); } },
+  splat_far: { d: 1.0, lvl: -11, vars: 2, lim: 2, b: (s) => { const r = s.verb(2, 0.6); const lp = s.lp(900, 0.7, r); s.thump(0, 100, 45, 0.15, 0.7, lp); s.nz({ d: 0.15, v: 0.5, bp: 600, f2: 200, q: 1, to: lp }); } },
 
   // ===== bosses
   boss_intro: { d: 3.0, lvl: -3, vars: 1, lim: 1, pri: 2, b: (s) => { const r = s.room(2.8, 0.5); s.nz({ d: 0.8, v: 0.4, bp: 300, f2: 5000, q: 1.5, a: 0.75 }); impactLayer(s, 0.8, 2, 1); s.thump(0.8, 70, 28, 1.6, 1, s.drive(2)); [40, 47, 52, 55].forEach((m) => s.note('brass', 0.8, m, 1.2, 1, { att: 0.01 }, r)); s.note('crash', 0.8, 0, 0, 0.8, {}, r); } },

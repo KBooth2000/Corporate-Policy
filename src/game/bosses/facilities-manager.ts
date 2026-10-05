@@ -9,7 +9,7 @@ import type { GameplayScene } from '../../scenes/gameplay';
 import type { FloorRequest, LightDef } from '../world-types';
 import { TILE } from '../world-types';
 import { Boss, Layer, ScriptOpts, ScriptCutscene, easeOut, easeIn, clamp, lerp, angleTo, dist, fromAngle } from './boss';
-import { buildArena, Grid, coreLobby, ArenaMap, mark, roomOfMark } from './arena';
+import { buildArena, Grid, coreLobby, lobbyDoor, ArenaMap, mark, roomOfMark } from './arena';
 import { MAT } from '../gen/materials';
 import { facilitiesArt, scrubberSprite } from '../../art/bosses/facilities';
 import { boilerSprite, panelSprite, beaconSprite, toolboxSprite, hatchSprite, hardhatSprite, pxEllipse } from '../../art/bosses/props';
@@ -29,7 +29,7 @@ function buildMap(req: FloorRequest): ArenaMap {
   const g = new Grid(50, 24, ' ');
   g.room(13, 0, 48, 23, '#', '.');
   coreLobby(g, 0, 4);
-  g.fill(13, 9, 13, 11, 'D');
+  lobbyDoor(g, 9, 11);
   g.set(31, 12, 'a'); g.set(31, 6, 'b'); g.set(16, 21, 'h'); g.set(45, 21, 'h'); g.set(44, 18, 's');
   for (const [x, y] of [[22, 8], [40, 8], [24, 16], [38, 16], [31, 19], [17, 13], [45, 12]]) g.set(x, y, 'w');
   const warm = (x: number, y: number): LightDef => ({ x: (x + 0.5) * TILE, y: (y + 0.5) * TILE, radius: 120, color: '#f1f6e4', intensity: 0.95, flicker: 'fluorescent' });

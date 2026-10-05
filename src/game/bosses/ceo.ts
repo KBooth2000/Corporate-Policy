@@ -11,7 +11,7 @@ import type { GameplayScene } from '../../scenes/gameplay';
 import type { FloorRequest, LightDef } from '../world-types';
 import { TILE } from '../world-types';
 import { Boss, Layer, ScriptOpts, ScriptCutscene, easeOut, clamp, lerp, angleTo, dist, fromAngle } from './boss';
-import { buildArena, Grid, coreLobby, ArenaMap, mark, roomOfMark } from './arena';
+import { buildArena, Grid, coreLobby, lobbyDoor, ArenaMap, mark, roomOfMark } from './arena';
 import { MAT } from '../gen/materials';
 import { ceoArt } from '../../art/bosses/ceo';
 import { heliSprite, trophySprite, bigScreenSprite, pxEllipse } from '../../art/bosses/props';
@@ -41,7 +41,7 @@ function buildMap(req: FloorRequest): ArenaMap {
   const g = new Grid(52, 72, ' ');
   g.room(13, 0, 50, 21, '#', '.');                 // boardroom
   coreLobby(g, 0, 4);
-  g.fill(13, 9, 13, 11, 'D');
+  lobbyDoor(g, 9, 11);
   g.room(13, 24, 50, 45, '#', '.');                // CEO's office
   g.fill(15, 45, 48, 45, 'S');                     // panoramic glass
   g.fill(13, 48, 50, 71, 'O');                     // rooftop: open edges all round

@@ -235,10 +235,9 @@ export class Player {
     let xDest: AudioNode = this.xLP;
     if (def.exploreFx === 'phone') {
       // band-limited "phone line": 350 Hz – 3.2 kHz, presence bump, slight grit
-      const g = gain(ctx, 1.25, this.xLP);
-      const sh = shaper(ctx, satCurve(1.8), g);
-      const pk = filt(ctx, 'peaking', 1700, 1, sh, 5);
-      xDest = filt(ctx, 'highpass', 380, 0.9, filt(ctx, 'highpass', 330, 0.7, filt(ctx, 'lowpass', 3200, 0.9, filt(ctx, 'lowpass', 3400, 0.7, pk))));
+      const g = gain(ctx, 1.2, this.xLP);
+      const band = filt(ctx, 'highpass', 380, 0.9, filt(ctx, 'highpass', 330, 0.7, filt(ctx, 'lowpass', 3200, 0.9, filt(ctx, 'lowpass', 3400, 0.7, filt(ctx, 'peaking', 1700, 1, g, 5)))));
+      xDest = shaper(ctx, satCurve(1.8), band); // grit first, then the band limit, so nothing escapes the line
     }
     this.xBus = gain(ctx, 1, xDest);
     // shared reverb + tempo delay

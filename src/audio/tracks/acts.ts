@@ -114,7 +114,7 @@ export const ACT3_MEL =
 export const ACT3: TrackDef = {
   id: 'act3', title: 'Your Call Is Important To Us', combatTitle: 'Minimal Compliance',
   bpm: 126, key: 'A minor', desc: 'Original baroque hold music (harpsichord, strings, pizzicato) squeezed through a 350 Hz–3.2 kHz phone line; drops into minimal techno with bleeps, dub stabs and the harpsichord figure.',
-  prog: ACT3_PROG, exploreFx: 'phone', xGain: 0.55, rv: { size: 1.8, damp: 0.6 }, delay: { beats: 0.75, fb: 0.45 }, rageLow: 33,
+  prog: ACT3_PROG, exploreFx: 'phone', xGain: 0.7, rv: { size: 1.8, damp: 0.6 }, delay: { beats: 0.75, fb: 0.45 }, rageLow: 33,
   parts: [
     // ---- exploration: hold music
     { i: 'harpsi', k: 'm', on: 'x', p: { A: ACT3_MEL }, o: 'A _*16', v: 1, rv: 0.12 },

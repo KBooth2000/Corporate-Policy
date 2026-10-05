@@ -10,7 +10,7 @@ import type { GameplayScene } from '../../scenes/gameplay';
 import type { FloorRequest, LightDef, BreachDef } from '../world-types';
 import { TILE, T } from '../world-types';
 import { Boss, Layer, ScriptOpts, ScriptCutscene, easeOut, clamp, lerp, angleTo, dist, fromAngle } from './boss';
-import { buildArena, Grid, coreLobby, ArenaMap, mark, roomOfMark } from './arena';
+import { buildArena, Grid, coreLobby, lobbyDoor, ArenaMap, mark, roomOfMark } from './arena';
 import { MAT } from '../gen/materials';
 import { complianceArt } from '../../art/bosses/compliance';
 import { shredderSprite, shutterSprite } from '../../art/bosses/props';
@@ -40,7 +40,7 @@ function buildMap(req: FloorRequest): ArenaMap {
   const g = new Grid(50, 28, ' ');
   g.room(13, 0, 48, 27, '#', '.');
   coreLobby(g, 0, 8);
-  g.fill(13, 13, 13, 15, 'D');
+  lobbyDoor(g, 13, 15);
   g.set(24, 9, 'a'); g.set(23, 7, 'b');
   for (const [x, y] of [[21, 7], [38, 7], [21, 20], [38, 20]]) g.set(x, y, 'q');
   const lamp = (x: number, y: number): LightDef => ({ x: (x + 0.5) * TILE, y: (y + 0.5) * TILE, radius: 120, color: '#dfe8ff', intensity: 0.9, flicker: 'none' });
