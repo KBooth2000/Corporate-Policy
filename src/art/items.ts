@@ -1,7 +1,16 @@
-// ITEM / ICON ART CONTRACT. Weapons, projectiles, pickups, UI icons, desk items, button prompts.
+// ITEM / ICON ART. Weapons, projectiles, pickups, UI icons, desk items, button prompts.
+// Everything is hand-authored pixel art (ASCII grids + shape helpers in src/art/items/*), baked once and cached.
+// Lighting is top-left; every solid object has a 1px OUTLINE. The telegraph colours never appear here.
 import type { Sprite } from '../render/canvas';
-import { paint, sprite, rect } from '../render/canvas';
 import type { Device } from '../core/input';
+import type { IDef } from './items/gfx';
+import { iconTile } from './items/gfx';
+import { weaponHeld, weaponIconCanvas } from './items/weapons';
+import { ICONS_REWARD, ICONS_DEPT } from './items/icons';
+import { ICONS_HUD } from './items/icons2';
+import { DESK_ICONS, DESK_FALLBACK } from './items/desk';
+import { projectile, pickup, cursor } from './items/misc';
+import { glyph } from './items/prompts';
 
 /** UI / reward / HUD icon names. */
 export type IconName =
@@ -19,21 +28,44 @@ export type IconName =
 /** Projectile visuals. */
 export type ProjectileKind = 'staple' | 'nail' | 'laser' | 'calc' | 'tape' | 'confetti' | 'phone' | 'stapler_thrown' | 'contract' | 'toolbox' | 'binder' | 'scream' | 'beam' | 'golf_ball' | 'paper' | 'coffee' | 'invite' | 'pen';
 
-// ----------------------------------------------------------------------------
-// Placeholder implementation (replaced by the art module).
-const cache = new Map<string, Sprite>();
-function box(key: string, w: number, h: number, col: string, ox?: number, oy?: number): Sprite {
-  let s = cache.get(key);
-  if (!s) { s = sprite(paint(w, h, (g) => rect(g, 0, 0, w, h, col)), ox, oy); cache.set(key, s); }
-  return s;
-}
+/** World pickup visuals (origin bottom-centre). */
+export type PickupKind = 'cash_coin' | 'cash_note' | 'cash_bundle' | 'heal_biscuit' | 'heal_sandwich' | 'heal_firstaid' | 'espresso' | 'leave_token' | 'ammo_box' | 'hr_file' | 'benefit_envelope' | 'desk_item_box' | 'rage_mod' | 'repair_tape' | 'key_card';
 
-/** Held weapon sprite pointing right (+x) with origin at the grip. */
-export function weaponSprite(id: string): Sprite { return box('w:' + id, 14, 4, '#c8c8d0', 2, 2); }
+const ICON_DEFS: Record<IconName, IDef> = { ...ICONS_REWARD, ...ICONS_DEPT, ...ICONS_HUD } as Record<IconName, IDef>;
+/** All icon names with art (for galleries / tests). */
+export const ICON_NAMES = Object.keys(ICON_DEFS) as IconName[];
+const iconCache = new Map<string, HTMLCanvasElement>();
+
+/** Held weapon sprite pointing right (+x) with origin at the grip. Unknown ids fall back to the fist. */
+export function weaponSprite(id: string): Sprite { return weaponHeld(id); }
 /** 16×16 inventory/pickup icon. */
-export function weaponIcon(id: string): HTMLCanvasElement { return box('wi:' + id, 16, 16, '#c8c8d0', 8, 8).img as HTMLCanvasElement; }
-export function icon(name: IconName): HTMLCanvasElement { return box('i:' + name, 16, 16, '#ffd34d', 8, 8).img as HTMLCanvasElement; }
-export function deskItemIcon(id: string): HTMLCanvasElement { return box('d:' + id, 16, 16, '#9be37b', 8, 8).img as HTMLCanvasElement; }
-export function projectileSprite(kind: ProjectileKind): Sprite { return box('p:' + kind, 4, 2, '#eeeeee', 2, 1); }
-/** Button prompt glyph for a binding label on a device (e.g. 'X' on xbox, 'Square' on playstation, 'E' on kbm). */
-export function promptGlyph(label: string, device: Device): HTMLCanvasElement { return box('g:' + device + label, 12, 12, '#ffffff', 6, 6).img as HTMLCanvasElement; }
+export function weaponIcon(id: string): HTMLCanvasElement { return weaponIconCanvas(id); }
+/** 16×16 reward / HUD / department / policy icon. */
+export function icon(name: IconName): HTMLCanvasElement {
+  let c = iconCache.get(name);
+  if (!c) {
+    const d = ICON_DEFS[name] ?? DESK_FALLBACK;
+    c = iconTile(d.rows, d.pal);
+    iconCache.set(name, c);
+  }
+  return c;
+}
+/** 16×16 Desk Item icon (unique per item; unknown ids get a generic cardboard-box fallback). */
+export function deskItemIcon(id: string): HTMLCanvasElement {
+  const key = 'desk:' + id;
+  let c = iconCache.get(key);
+  if (!c) {
+    const d = DESK_ICONS[id] ?? DESK_FALLBACK;
+    c = iconTile(d.rows, d.pal);
+    iconCache.set(key, c);
+  }
+  return c;
+}
+/** Projectile sprite, oriented pointing right, origin centred. */
+export function projectileSprite(kind: ProjectileKind): Sprite { return projectile(kind); }
+/** Button prompt glyph for a binding label on a device (e.g. 'X' on xbox, 'Square' on playstation, 'E' on kbm). 14px tall. */
+export function promptGlyph(label: string, device: Device): HTMLCanvasElement { return glyph(label, device); }
+/** World pickup sprite, origin bottom-centre. */
+export function pickupSprite(kind: PickupKind): Sprite { return pickup(kind); }
+/** Aim crosshair (11×11, origin centre, white with teal pip) or the CorpOS pointer (origin at the tip). */
+export function cursorSprite(kind: 'aim' | 'pointer'): Sprite { return cursor(kind); }
