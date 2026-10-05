@@ -132,7 +132,7 @@ Triggers: every push to any branch, tags `v*`, and manual `workflow_dispatch` (w
 | --- | --- | --- | --- |
 | `web` | ubuntu | `npm ci`, non-blocking `tsc --noEmit`, `npm run build` | `CompanyPolicy-Web` |
 | `windows` | windows-latest | build, `electron-builder --win` (NSIS + portable), zip of unpacked app | `CompanyPolicy-Windows` |
-| `linux` | ubuntu | build, AppImage, headless Xvfb smoke test of the packaged app (non-blocking) | `CompanyPolicy-Linux-AppImage` |
+| `linux` | ubuntu | build, AppImage, headless Xvfb smoke test of the packaged app (loads the game, exercises `cpNative` save/load) | `CompanyPolicy-Linux-AppImage` |
 | `android` | ubuntu | Temurin 21, Android SDK 36, `cap sync`, `gradlew assembleRelease bundleRelease`, `apksigner verify` | `CompanyPolicy-Android-APK`, `CompanyPolicy-Android-AAB` |
 | `release` | ubuntu | only for tags `v*` or a manual run with `release=true`: creates or updates a GitHub Release with every artifact | GitHub Release |
 

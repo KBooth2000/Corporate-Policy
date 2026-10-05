@@ -12,7 +12,7 @@ const DEV_URL = !app.isPackaged ? process.env.CP_DEV_URL || '' : '';
 const isDev = !app.isPackaged;
 
 // Custom privileged scheme so ES modules / fetch / localStorage behave like a normal secure origin (file:// would not).
-protocol.registerSchemeAsPrivileged([
+protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
 ]);
 
