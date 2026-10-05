@@ -555,6 +555,43 @@ test('executions leave no console errors in Reduced lights + screen shake off', 
   check('server rack with shake off: runs, victim dies', r.dead && r.dur > 0.9);
 });
 
+
+// ---------------------------------------------------------------------------------------------------- breach
+test('breach rules + spectacle', async () => {
+  await fresh();
+  const r = await ev(() => {
+    const T = window.__T, w = T.W(), p = T.P(), m = w.map, TT = T.M.wt.T;
+    const other = m.rooms.find((q) => q.id !== T.room.id && q.kind !== 'core').id;
+    const tx = Math.floor(T.cx / 16), ty = T.room.ty - 1;
+    for (const x of [tx, tx + 1]) m.tiles[ty * m.w + x] = TT.PARTITION;
+    m.tiles[ty * m.w + tx + 4] = TT.PARTITION;          // a partition tile that is NOT in any BreachDef
+    const b = { id: 777, roomA: T.room.id, roomB: other, tiles: [[tx, ty], [tx + 1, ty]], material: 'plaster' };
+    m.breaches.push(b);
+    const dummy = T.enemy((tx + 0.5) * 16 + 40, (ty + 1) * 16 + 40, 100);
+    // 1) thrown at a plain partition outside any BreachDef: no breach
+    const e1 = T.enemy((tx + 4.5) * 16, (ty + 1) * 16 + 30, 100);
+    p.x = (tx + 4.5) * 16; p.y = (ty + 1) * 16 + 50; p.startGrab(e1); p.aim = -Math.PI / 2; p.throwGrabbed();
+    T.until(() => !e1.thrown, 60);
+    const noBreach = m.tiles[ty * m.w + tx + 4] === TT.PARTITION && m.breaches.length === 1 && w.rooms[T.room.id].mergedWith === -1;
+    // 2) thrown at the BreachDef
+    const e2 = T.enemy((tx + 1) * 16, (ty + 1) * 16 + 30, 100);
+    p.x = (tx + 1) * 16; p.y = (ty + 1) * 16 + 50; p.startGrab(e2); p.aim = -Math.PI / 2; p.throwGrabbed();
+    const cash0 = T.S().run.pettyCash;
+    T.until(() => w.rooms[T.room.id].mergedWith !== -1, 80);
+    T.step(2);
+    const floats = w.floats.map((f) => f.text);
+    return {
+      noBreach, tiles: b.tiles.map(([x, y]) => m.tiles[y * m.w + x]), rubble: TT.RUBBLE, merged: [w.rooms[T.room.id].mergedWith, w.rooms[other].mergedWith], other,
+      removed: !m.breaches.includes(b), floats, zoomKick: window.__cp.app.renderer.zoom > 1.02, pickups: T.pickups().length,
+    };
+  });
+  check('throw at a partition outside any BreachDef does not breach', r.noBreach, JSON.stringify(r));
+  check('thrown body breaches BreachDef tiles only (rubble)', r.tiles.every((t) => t === r.rubble) && r.removed, JSON.stringify(r));
+  check('merges exactly the two rooms', r.merged[0] === r.other && r.merged[1] !== -1, JSON.stringify(r));
+  check('BREACH BONUS float + camera kick + cash drop', r.floats.some((f) => f.startsWith('BREACH BONUS')) && r.zoomKick && r.pickups > 0, JSON.stringify(r));
+  await shot('breach', await ev(() => window.__T.cx), await ev(() => window.__T.room.ty * 16 + 10), 130, 80);
+});
+
 // ---------------------------------------------------------------------------------------------------- main
 await page.goto(URL);
 for (const t of tests) {

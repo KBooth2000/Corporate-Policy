@@ -168,7 +168,7 @@ define('caretaker', {
         swing(e, {
           windup: 0.7, reach: 46, arc: 2.6, damage: e.arch.damage, knockback: 170, heavy: true, cd: 1.7, anim: 'heavy',
           onFire: (a) => {
-            for (const k of [-0.7, 0, 0.7]) addWet(w, e.x + Math.cos(a + k) * 26, e.y + Math.sin(a + k) * 18, 14, 9, '#6aa8d8', e, true);
+            for (const k of [-0.7, 0, 0.7]) addWet(w, e.x + Math.cos(a + k) * 26, e.y + Math.sin(a + k) * 18, 14, 9, '#6aa8d8', e, true, k === 0);
             audio.sfx('mop_slosh', { x: e.x, y: e.y });
           },
         });

@@ -16,14 +16,22 @@ const SECS = +(process.env.SECS || 20);
 const NOWAV = !!process.env.NOWAV;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
-const page = await browser.newPage();
 const logs = [];
-page.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') logs.push(`[${m.type()}] ${m.text()}`); });
-page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
-await page.goto(url);
-await page.waitForFunction(() => !!window.__audioQA, null, { timeout: 30000 });
+let page = null, uses = 0;
+async function openPage() {
+  if (page) await page.close().catch(() => {});
+  page = await browser.newPage();
+  page.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') logs.push(`[${m.type()}] ${m.text()}`); });
+  page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
+  await page.goto(url);
+  await page.waitForFunction(() => !!window.__audioQA, null, { timeout: 30000 });
+  uses = 0;
+}
+await openPage();
 // The shared dev server may hot-reload while other people edit files: retry across reloads.
 async function ev(fn, arg) {
+  // recycle the page regularly so offline-render memory never accumulates
+  if (++uses > 12) await openPage();
   for (let i = 0; ; i++) {
     try { return await page.evaluate(fn, arg); } catch (e) {
       if (i > 6 || !/context was destroyed|navigation|__audioQA|Target closed/.test(String(e))) throw e;

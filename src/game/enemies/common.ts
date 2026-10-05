@@ -680,6 +680,7 @@ export class ZoneLayer extends Entity {
           break;
         }
         case 'mopped': {
+          if (z.data.nosign) break;
           // little "caution: wet floor" A-frame sign so the hazard reads instantly
           const x = Math.round(z.x), y = Math.round(z.y);
           g.fillStyle = '#1a1a1e'; g.fillRect(x - 3, y - 9, 7, 10);
@@ -697,7 +698,7 @@ export class ZoneLayer extends Entity {
           g.setLineDash([]);
           for (let i = 0; i < 3; i++) {
             const a = t * 0.6 + i * 2.094;
-            drawText(g, '§', z.x + Math.cos(a) * z.r * 0.6, z.y + Math.sin(a) * z.r * 0.42 - 4, { color: '#d9b45a', align: 'center', shadow: null });
+            drawText(g, 'S', z.x + Math.cos(a) * z.r * 0.6, z.y + Math.sin(a) * z.r * 0.42 - 4, { color: '#d9b45a', align: 'center', shadow: null });
           }
           break;
         }
@@ -722,11 +723,11 @@ export function zones(w: World): ZoneLayer {
   return L;
 }
 
-export function addWet(w: World, x: number, y: number, r: number, t: number, col = '#6aa8d8', owner: Enemy | null = null, slip = false): void {
+export function addWet(w: World, x: number, y: number, r: number, t: number, col = '#6aa8d8', owner: Enemy | null = null, slip = false, sign = true): void {
   const room = w.roomAt(x, y);
   w.decals.splat(room, x, y, Math.max(4, r * 0.55), col, 'wet');
   // freshly mopped floors are tracked by the zone layer (caretakers are immune); other spills use the shared wetZones
-  if (slip) zones(w).add({ kind: 'mopped', x, y, r, t, owner });
+  if (slip) zones(w).add({ kind: 'mopped', x, y, r, t, owner, data: { nosign: !sign } });
   else ((w as any).wetZones ??= []).push({ x, y, r, t });
   for (let i = 0; i < 6; i++) w.particles.spawn({ kind: 'water', x: x + fxRng.range(-r, r) * 0.5, y: y + fxRng.range(-r, r) * 0.3, z: 4, vx: fxRng.range(-40, 40), vy: fxRng.range(-20, 20), vz: fxRng.range(20, 50), gravity: 200, life: 0.6, col, size: 1 });
 }

@@ -26,7 +26,7 @@ export const SALES_BENEFITS: BenefitDef[] = [
   B({
     id: 'cold_call', dept: 'sales', name: 'Cold Call', starter: true,
     v: [{ b: 0, r: 0 }, { b: 0.2, r: 0 }, { b: 0.4, r: 0.5 }],
-    desc: (v) => `The first hit after a dash is a guaranteed critical${v.b ? `, dealing ${pf(v.b)} more` : ''}${v.r ? ' and refunding half a dash charge' : ''}.`,
+    desc: (v) => `First hit after a dash is a critical${v.b ? `, ${pf(v.b)} stronger` : ''}${v.r ? ', refunding half a dash' : ''}.`,
     floor: (s, v) => {
       let armed = false;
       on(s, 'dashEnd', () => { armed = true; s.player.nextHitCrit = true; });

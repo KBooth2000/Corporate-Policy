@@ -192,8 +192,8 @@ async function runCase(browser, c) {
 
 
 // ------------------------------------------------------------------ promotion suite (spec 5.6), both modes
-async function promoPage(browser, mode, hash) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+async function promoPage(ctx, mode, hash) {
+  const page = await ctx.newPage(); // one browser context per mode so localStorage (the profile) carries across "runs"
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -205,6 +205,7 @@ async function promoPage(browser, mode, hash) {
 }
 
 async function promoSuite(browser, mode) {
+  browser = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const res = { name: `promotion_${mode}`, ok: true, fails: [], notes: {} };
   const fail = (m) => { res.ok = false; res.fails.push(m); };
   // 1) an Intern kills the player → promoted via RUN_END_HOOKS
@@ -323,6 +324,7 @@ async function promoSuite(browser, mode) {
     await page.evaluate(async () => { const m = await import('/src/game/profile.ts'); m.profile().promoted = []; m.profile().trophies = []; m.saveProfile(); });
     await page.close();
   }
+  await browser.close();
   return res;
 }
 

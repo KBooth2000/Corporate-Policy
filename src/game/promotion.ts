@@ -77,9 +77,9 @@ const weaknessId = (r: PromotedRecord): string => byName(WEAKNESSES, r.weakness)
 export function strengthFor(method: string, weaponId: string, raging: boolean): TraitDef {
   if (raging) return STRENGTHS.calm;
   const thrown = !!weaponId && (WEAPON_DEFS as any)[weaponId]?.cls === 'throwable';
+  if (method === 'melee' || method === 'heavy') return STRENGTHS.bruiser;
   if (method === 'throw' || method === 'body' || thrown) return STRENGTHS.ballistic;
   if (method === 'ranged') return STRENGTHS.sharpshooter;
-  if (method === 'melee' || method === 'heavy') return STRENGTHS.bruiser;
   if (method === 'hazard' || method === 'fall') return STRENGTHS.hs_officer;
   if (method === 'bleed') return STRENGTHS.paper_cuts;
   return STRENGTHS.networker;
@@ -288,7 +288,7 @@ function announce(s: GameplayScene, e: Enemy): void {
   const mode = (e.flags.promoMode as PromotionMode) ?? promotionMode();
   const rank = rankName(mode === 'full' ? rec.rank : 1);
   notify({ kind: 'boss', title: 'Company Announcement', body: announcementText(rec, mode), icon: icon('promotion'), duration: 6 });
-  s.hud.showBanner(`PROMOTED: ${rank.toUpperCase()} ${rec.name.toUpperCase()}`, `${rec.title} · ${ARCHETYPE_DEFS[e.archetype].name}`, '#ffd34d', 3.6);
+  s.hud.showBanner(`PROMOTED: ${rank.toUpperCase()} ${rec.name.toUpperCase()}`, `${rec.title} - ${ARCHETYPE_DEFS[e.archetype].name}`, '#ffd34d', 3.6);
   audio.sfx('stinger_promotion');
   ring(e.world, e.x, e.y - 14, 26, '#ffd34d', 0.7);
   if (e.flags.director) s.hud.bossBar = { name: `${rank} ${rec.name}`, title: rec.title, hp: e.hp, maxHp: e.maxHp, phase: 1, markers: [], shield: e.shield };

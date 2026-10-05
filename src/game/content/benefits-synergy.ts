@@ -21,6 +21,7 @@ export const SYNERGIES: BenefitDef[] = [
         p.data.autoTrigger = true;
         if (w.time < (p.data.smartT ?? 0)) continue;
         const px = p.def.x, py = p.def.y - p.def.h / 2;
+        if (dist2(s.player, { x: px, y: py }) < 40) continue; // never blow the player up with their own building
         if (!enemies.some((e) => dist2(e, { x: px, y: py }) < v.r)) continue;
         p.data.smartT = w.time + v.cd;
         w.floatText(px, py - 14, 'AUTO-TRIGGER', ZAP);

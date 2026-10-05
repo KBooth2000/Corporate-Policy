@@ -44,7 +44,7 @@ export const IT_BENEFITS: BenefitDef[] = [
   B({
     id: 'ups', dept: 'it', name: 'Uninterruptible Power Supply', starter: true,
     v: [{ d: 8, t: 1 }, { d: 14, t: 1.5 }, { d: 22, t: 2.2 }],
-    desc: (v) => `When your Wellbeing shield breaks, discharge: ${v.d} damage and ${num(v.t)}s stun within 72px. Recharges in 10s.`,
+    desc: (v) => `Shield break discharges ${v.d} damage and a ${num(v.t)}s stun within 72px (10s recharge).`,
     floor: (s, v) => {
       let cd = 0;
       on(s, 'playerHit', (e) => {
@@ -98,7 +98,7 @@ export const IT_BENEFITS: BenefitDef[] = [
   B({
     id: 'reboot', dept: 'it', name: 'Have You Tried Turning It Off?',
     v: [{ t: 0.8, h: 0 }, { t: 1.2, h: 0 }, { t: 1.8, h: 0.15 }],
-    desc: (v) => `Once per floor, below 35% Wellbeing: shield fully reboots, enemies within 80px stunned ${num(v.t)}s${v.h ? `, and heal ${pf(v.h)}` : ''}.`,
+    desc: (v) => `Once per floor below 35% HP: full shield, ${num(v.t)}s stun within 80px${v.h ? `, heal ${pf(v.h)}` : ''}.`,
     floor: (s, v) => {
       let used = false;
       on(s, 'playerHit', () => {

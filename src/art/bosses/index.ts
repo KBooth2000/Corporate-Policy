@@ -3,10 +3,12 @@ import type { Ctx } from '../../render/canvas';
 import type { BossArt } from './bake';
 import { facilitiesArt } from './facilities';
 import { salesArt } from './sales';
+import { complianceArt } from './compliance';
 
 export const BOSS_ARTS: Record<string, () => BossArt> = {
   fm: facilitiesArt,
   sales: salesArt,
+  comp: complianceArt,
 };
 
 /** Dev gallery page for arena set pieces (filled in by props.ts). */

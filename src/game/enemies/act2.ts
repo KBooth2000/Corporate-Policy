@@ -48,7 +48,7 @@ define('sales_rep', {
         then: chain ? (en) => { if (en.alive && en.seesPlayer()) dash(0.3, false); } : undefined,
       });
       dash(0.5, e.tier >= 2);
-      sayIf(e, 'attack', 0.6, undefined, 0, e.rng.pick(['Let\'s circle back — to your face!', 'Closing! Closing! CLOSING!', 'Can I just grab two minutes?', 'Let me run something by you!']));
+      sayIf(e, 'attack', 0.6, undefined, 0, e.rng.pick(['Let\'s circle back - to your face!', 'Closing! Closing! CLOSING!', 'Can I just grab two minutes?', 'Let me run something by you!']));
       return;
     }
     if (d < 26 && e.attackCd <= 0 && sees) { swing(e, { windup: 0.45, reach: 26, damage: e.arch.damage, knockback: 100, cd: 1.1, anim: 'attack2' }); return; }
@@ -60,7 +60,7 @@ define('sales_rep', {
 // MARKETING EXEC — support (kill priority). Stays behind the line and "rebrands" an ally: a temporary buff
 // (+30% damage via status.rebranded, +15% speed) and a floating new name.
 const BRAND_PRE = ['Synergy', 'Disrupt', 'Agile', 'Thought-Leader', 'Next-Gen', 'Purpose-Led', 'Growth', 'Omni', 'Hyper', 'Brand'];
-const BRAND_POST = ['2.0', '™', '.io', 'Plus', 'Pro Max', '360', 'Reimagined', 'X'];
+const BRAND_POST = ['2.0', ' TM', '.io', 'Plus', 'Pro Max', '360', 'Reimagined', 'X'];
 function brandName(e: Enemy, target: Enemy): string {
   const first = target.name.split(' ')[0];
   return e.rng.chance(0.5) ? `${e.rng.pick(BRAND_PRE)} ${first}` : `${first} ${e.rng.pick(BRAND_POST)}`;

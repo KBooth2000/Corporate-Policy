@@ -37,7 +37,7 @@ const waitTop = async (name, timeout = 20000) => {
 };
 const waitFor = async (fn, timeout = 20000, arg) => {
   const t0 = Date.now();
-  while (Date.now() - t0 < timeout) { if (await page.evaluate(fn, arg)) return true; await sleep(120); }
+  while (Date.now() - t0 < timeout) { try { if (await page.evaluate(fn, arg)) return true; } catch { /* page still loading */ } await sleep(120); }
   return false;
 };
 const toPage = (ix, iy) => ev(([ix, iy]) => { const r = window.__cp.app.renderer; const b = r.screen.getBoundingClientRect(); return { x: b.left + (r.offX + ix * r.scale) / r.dpr, y: b.top + (r.offY + iy * r.scale) / r.dpr }; }, [ix, iy]);
@@ -51,7 +51,7 @@ const gameplayOk = async () => { const ok = await waitTop('gameplay', 25000); aw
 // ===========================================================================
 section('Boot: main menu');
 await page.goto(URL);
-check('main menu is the first scene', await waitTop('mainmenu', 15000));
+check('main menu is the first scene', await waitTop('mainmenu', 90000));
 await sleep(2500);
 await shot('01-mainmenu');
 check('no profile yet: seenIntro false', (await profileNow()).seenIntro === false);

@@ -499,7 +499,7 @@ function wallArt(p: PP): Art {
             else { rect(g, 2, 2, W - 4, 3, s.brand); rect(g, 2, 6, W - 10, 1, s.screenGlow); rect(g, 2, 8, W - 14, 1, s.screenGlow); }
           }
           px(g, W - 3, 2, 'rgba(255,255,255,0.8)');
-        } else { line(g, 2, 1, W - 4, H - 2, '#5a6070'); line(g, W >> 1, 1, (W >> 1) - 4, H - 2, '#3a4050'); if (st === 'active' || (fr & 1)) sparks(g, W >> 1, H >> 1, fr, 3); }
+        } else { line(g, 2, 1, W - 4, H - 2, '#5a6070'); line(g, W >> 1, 1, (W >> 1) - 4, H - 2, '#3a4050'); if (fr & 1) sparks(g, W >> 1, H >> 1, fr, 3); }
         rect(g, (W >> 1) - 2, H - 1, 4, 1, '#3a3a40');
       }) };
     }
@@ -617,7 +617,6 @@ function waterCoolerArt(p: PP): Art {
     rect(g, 3, 16, 2, 2, '#3a6ad0'); rect(g, 6, 16, 2, 2, '#d03a3a'); rect(g, 3, 21, 5, 2, '#9aa0a6');
     if (st === 'destroyed' || st === 'used') {
       rect(g, 3, 9, 6, 3, 'rgba(120,190,240,0.8)'); debris(g, 12, 6, ['#a8d8f8', '#78b8e8'], v, 5);
-      if (st === 'active' || (fr & 1)) {}
       return;
     }
     // bottle

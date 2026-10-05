@@ -45,7 +45,7 @@ function benefitItem(s: S, o: Offer): Item {
   const parent = d.synergy ? `${DEPT_SHORT[d.synergy[0]]} + ${DEPT_SHORT[d.synergy[1]]}` : DEPT_SHORT[d.dept];
   const held = heldRarity(s.run, d.id);
   return { kind: 'benefit', name: d.name, icon: benefitIcon(d), rarity: o.rarity, tag, sold: false, offer: o, base: PRICES[['benefit_standard', 'benefit_enhanced', 'benefit_executive'][o.rarity]].min,
-    desc: `${RARITY_LABEL[o.rarity]} ${parent}${held >= 0 ? ' upgrade' : ''}: ${d.desc[o.rarity]}` };
+    desc: `${RARITY_LABEL[o.rarity]} ${parent}${held >= 0 ? ' upgrade' : ''}: ${d.desc[o.rarity]}`.slice(0, 118) };
 }
 
 function genCanteen(s: S, n: number): Item[] {

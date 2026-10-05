@@ -210,3 +210,52 @@ export function contractSprite(): Sprite {
     b.line(1, 8, 6, 7, C('#c03a2c'));
   }, 4, 5));
 }
+
+// =============================================================================================== Act 3
+const SHRED = ramp('#4a5468');
+const SHRED_D = ramp('#2a303e');
+/** Industrial shredder (96 wide); frame animates the cutter drums; jam = red lights. */
+export function shredderSprite(frame: number, running: boolean, gore = false): Sprite {
+  return cached(`shredder:${frame}:${running}:${gore}`, () => bakeSprite(96, 70, (b) => {
+    // hopper housing
+    box(b, 4, 0, 88, 44, SHRED, { top: true });
+    for (let x = 8; x < 88; x += 10) b.vline(x, 4, 40, SHRED.sh);
+    stripes(b, 4, 40, 88, 4, YEL.base, BLK, 6);
+    // label plate
+    box(b, 30, 6, 36, 9, ramp('#d8d0b0'));
+    b.hline(33, 62, 9, C('#8a2a2a')); b.hline(33, 56, 12, C('#5a5a62'));
+    // warning lights
+    const on = running && frame % 2 === 0;
+    b.ellipse(14, 10, 3, 3, on ? C('#ff3a24') : C('#6a1a14')); b.ellipse(82, 10, 3, 3, !on && running ? C('#ff3a24') : C('#6a1a14'));
+    // mouth with cutter drums
+    box(b, 8, 44, 80, 22, SHRED_D);
+    b.rect(12, 48, 72, 14, BLK);
+    for (let x = 12; x < 84; x += 4) {
+      const ph = (x / 4 + frame) % 2;
+      b.vline(x + ph, 49, 53, C('#b8c0cc')); b.vline(x + 1 - ph, 56, 60, C('#8e98a6'));
+      b.set(x + 2, 54, C('#d8dde4'));
+    }
+    if (gore) for (let k = 0; k < 12; k++) b.set(14 + ((k * 23) % 68), 52 + (k % 8), C('#8a0f14'));
+    // shredded paper spilling out
+    for (let k = 0; k < 14; k++) b.vline(10 + ((k * 37) % 76), 62, 66 + (k % 3), C(gore && k % 3 === 0 ? '#a3161b' : '#f2efe6'));
+    box(b, 0, 64, 96, 6, SHRED_D);
+  }, 48, 70));
+}
+
+/** Corrugated steel shutter tile (16 wide) — the audit walls. */
+export function shutterSprite(vertical: boolean, damaged: boolean): Sprite {
+  return cached(`shutter:${vertical}:${damaged}`, () => bakeSprite(16, 30, (b) => {
+    const S = ramp('#6a7484');
+    box(b, 0, 0, 16, 30, S, { top: true });
+    for (let y = 3; y < 28; y += 3) b.hline(1, 14, y, S.sh);
+    for (let y = 4; y < 28; y += 3) b.hline(1, 14, y, S.lt);
+    stripes(b, 0, 24, 16, 4, YEL.base, BLK, 4);
+    if (vertical) { b.vline(0, 0, 29, S.dk); b.vline(15, 0, 29, S.dk); }
+    if (damaged) { b.line(3, 6, 9, 16, S.dk); b.line(9, 16, 13, 10, S.dk); b.set(8, 15, C('#ffe9a0')); }
+  }, 8, 30));
+}
+
+/** Archive "red tape" projectile. */
+export function tapeSprite(): Sprite {
+  return cached('tape', () => bakeSprite(8, 4, (b) => { box(b, 0, 0, 8, 4, ramp('#c02a2a')); b.hline(1, 6, 1, C('#ff8a7a')); }, 4, 2));
+}
