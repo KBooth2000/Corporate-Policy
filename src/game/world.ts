@@ -533,9 +533,11 @@ export class World {
   }
 
   propSpriteFor(p: PropRT): Sprite {
-    const key = p.state;
+    // animated states (LEDs, sparks, smoke, candles) cycle 4 frames at ~7 fps
+    const frame = Math.floor(this.time * 7 + p.def.id) & 3;
+    const key = p.state + frame;
     let s = p.spriteCache.get(key);
-    if (!s) { s = propSprite(p.def, p.state); p.spriteCache.set(key, s); }
+    if (!s) { s = propSprite(p.def, p.state, frame); p.spriteCache.set(key, s); }
     return s;
   }
 

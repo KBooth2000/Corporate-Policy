@@ -290,7 +290,10 @@ export abstract class Boss extends Actor {
     }
     let amt = this.scaleIncoming(info) * this.dmgTakenMult;
     const floor = this.phaseFloor();
-    if (this.shield <= 0 && this.hp - amt < floor) amt = Math.max(0, this.hp - floor);
+    // shields absorb first (combat.damage), only the overflow reaches HP — clamp that at the phase floor
+    const sh = info.ignoreShield ? 0 : Math.max(0, this.shield);
+    const over = Math.max(0, amt - sh);
+    if (this.hp - over < floor) amt = sh + Math.max(0, this.hp - floor);
     if (info.knockback) info.knockback *= 0.12;
     return amt;
   }

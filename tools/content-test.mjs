@@ -590,7 +590,8 @@ await scenario('rewards', async () => {
     return true;
   });
   void pk;
-  await tap(page, 'KeyE'); await sleep(2800);
+  for (let k = 0; k < 4 && (await topName(page)) !== 'uiscene'; k++) { await tap(page, 'KeyE'); await sleep(700); }
+  await sleep(2500);
   assert((await page.evaluate(() => __cp.app.top.comp && __cp.app.top.comp.constructor.name)) === 'EmailView', 'Stress Modifier pickup opens a choice email');
   const subj = await page.evaluate(() => __cp.app.top.comp.o.subject + ' | ' + __cp.app.top.comp.o.attachments.map((a) => a.title + ':' + a.subtitle).join(' ; '));
   console.log('  ', subj);
@@ -785,7 +786,7 @@ await effectScenario('benefits-hr-exec-synergy', `
   reset(); add('phishing_campaign'); { const a = spawn(30), b = spawn(50); a.status.confused = 5; step(70); check('SYN phishing_campaign: confused enemies zap each other', b.hp < b.maxHp, b.maxHp - b.hp); }
   reset(); add('crypto_mining', 1); { run.pettyCash = 0; w.inCombat = true; step(600); w.inCombat = false; check('SYN crypto_mining: passive income while in combat (2 every 4.5s)', run.pettyCash >= 4 && run.pettyCash <= 6, run.pettyCash); }
   reset(); add('smart_watch', 1); { const a = spawn(30); a.status.electrified = 2; p.hp = 50; p.shield = 0; kill(a); check('SYN smart_watch: shocked kill heals + shield', p.hp === 55 && p.shield === 10, p.hp + '/' + p.shield); }
-  reset(); add('smart_building'); add('industrial_grade'); { const a = spawn(30); const pr = w.addProp({ id: 77003, kind: 'printer', x: p.x + 30, y: p.y + 6, w: 14, h: 10, solid: false, variant: 0, roomId: room(), facing: 0, hazard: true }); step(30); check('SYN smart_building: hazard near an enemy triggers itself', pr.data.autoTrigger === true && pr.data.smartT > 0, JSON.stringify(Object.keys(pr.data))); pr.gone = true; }
+  reset(); add('smart_building'); add('industrial_grade'); { const a = spawn(70); const pr = w.addProp({ id: 77003, kind: 'printer', x: p.x + 60, y: p.y + 6, w: 14, h: 10, solid: false, variant: 0, roomId: room(), facing: 0, hazard: true }); step(30); check('SYN smart_building: hazard near an enemy triggers itself', pr.data.autoTrigger === true && pr.data.smartT > 0, JSON.stringify(Object.keys(pr.data))); pr.gone = true; }
 `);
 
 // ===========================================================================================================

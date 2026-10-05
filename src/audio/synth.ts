@@ -33,7 +33,7 @@ export class Syn {
 
   tone(o: ToneOpts): OscillatorNode {
     const { ctx } = this;
-    const T = this.t0 + (o.t ?? 0);
+    const T = this.t0 + Math.max(0, o.t ?? 0);
     const g = gain(ctx, 0, o.to ?? this.out);
     const w = o.w ?? 'sine';
     const x = typeof w === 'string' ? osc(ctx, w as OscillatorType, o.f, g, o.det ?? 0) : oscWave(ctx, w, o.f, g, o.det ?? 0);
@@ -52,7 +52,7 @@ export class Syn {
 
   nz(o: NoiseOpts): GainNode {
     const { ctx } = this;
-    const T = this.t0 + (o.t ?? 0);
+    const T = this.t0 + Math.max(0, o.t ?? 0);
     const g = gain(ctx, 0, o.to ?? this.out);
     let head: AudioNode = g;
     let sweep: BiquadFilterNode | null = null;
@@ -77,7 +77,7 @@ export class Syn {
   /** FM tone (carrier/modulator ratio, decaying index). */
   fm(t: number, f: number, ratio: number, idx: number, d: number, v: number, to?: AudioNode, f2?: number): void {
     const { ctx } = this;
-    const T = this.t0 + t;
+    const T = this.t0 + Math.max(0, t);
     const g = gain(ctx, 0, to ?? this.out);
     const c = osc(ctx, 'sine', f, g);
     const m = osc(ctx, 'sine', f * ratio);
@@ -105,7 +105,7 @@ export class Syn {
   /** Whoosh: band-passed noise sweeping up then down. */
   whoosh(t: number, d: number, v: number, fLo = 400, fHi = 2500, to?: AudioNode): void {
     const { ctx } = this;
-    const T = this.t0 + t;
+    const T = this.t0 + Math.max(0, t);
     const g = gain(ctx, 0, to ?? this.out);
     const bp = filt(ctx, 'bandpass', fLo, 1.6, g);
     bp.frequency.setValueAtTime(fLo, T);
@@ -128,7 +128,7 @@ export class Syn {
   /** Amplitude-chopped noise (rotors, motors, tape). */
   chopped(t: number, d: number, v: number, rate: number, lp: number, depth = 0.9, to?: AudioNode, k: 'white' | 'pink' | 'brown' = 'brown', w: OscillatorType = 'square'): GainNode {
     const { ctx } = this;
-    const T = this.t0 + t;
+    const T = this.t0 + Math.max(0, t);
     const env = gain(ctx, 0, to ?? this.out);
     const am = gain(ctx, 1 - depth / 2, env);
     const l = osc(ctx, w, rate); const lg = gain(ctx, depth / 2); l.connect(lg); lg.connect(am.gain);
@@ -140,7 +140,7 @@ export class Syn {
   /** Formant vocal blob (crowd, choir-ish, screams). */
   vowel(t: number, f0: number, d: number, v: number, vowel: [number, number, number], opts: { f0end?: number; vib?: number; breath?: number; a?: number; to?: AudioNode; rough?: number } = {}): void {
     const { ctx } = this;
-    const T = this.t0 + t;
+    const T = this.t0 + Math.max(0, t);
     const env = gain(ctx, 0, opts.to ?? this.out);
     const sum = gain(ctx, 1);
     const fq = [[vowel[0], 1, 8], [vowel[1], 0.5, 10], [vowel[2], 0.22, 12]] as const;

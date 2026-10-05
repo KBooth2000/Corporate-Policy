@@ -373,7 +373,7 @@ export const BARKS: Bark[] = [
   // Management Consultant-specific barks (18+)
   { text: 'I bill you for this thinking', archetype: 'consultant', context: 'idle' },
   { text: 'The meter\'s running on this threat', archetype: 'consultant', context: 'alert' },
-  { text: 'That\'ll be $10k per second', archetype: 'consultant', context: 'attack' },
+  { text: 'That\'ll be £10k per second', archetype: 'consultant', context: 'attack' },
   { text: 'You\'re affecting my billing', archetype: 'consultant', context: 'hurt' },
   { text: 'Session ended', archetype: 'consultant', context: 'death' },
   { text: 'That\'s a billable incident', archetype: 'consultant', context: 'ally_death' },
