@@ -26,9 +26,15 @@ export function makeWeapon(id: string, opts: { durabilityMult?: number; ammoMult
   return { id, dur: Math.max(maxDur ? 1 : 0, Math.round(maxDur * f)), maxDur, ammo: Math.max(maxAmmo ? 1 : 0, Math.round(maxAmmo * f)), maxAmmo, rare: d.rarity >= 2 };
 }
 
+/** Unlock filter (set by the meta module): locked weapons never appear in run pools (spec 7.3). */
+let unlockFilter: (id: string) => boolean = () => true;
+export function setWeaponUnlockFilter(fn: (id: string) => boolean): void { unlockFilter = fn; }
+
 /** Pool of weapons that can drop/appear by act; rarity weighting improved by luck. */
 export function rollWeapon(rng: Rng, act: number, luck = 0, cls?: 'melee' | 'ranged' | 'thrown'): string {
-  const ids = WEAPON_IDS.filter((id) => id !== 'fists' && (!cls || slotOf(id) === cls));
+  let ids = WEAPON_IDS.filter((id) => id !== 'fists' && (!cls || slotOf(id) === cls));
+  const unlocked = ids.filter(unlockFilter);
+  if (unlocked.length) ids = unlocked;
   return rng.weighted(ids, (id) => {
     const r = def(id).rarity;
     const base = r === 0 ? 10 : r === 1 ? 4 + act : 1 + act * 0.8;

@@ -12,6 +12,7 @@ import type { PlayerRoleId } from '../../data/ids';
 import { awardAchievement } from './achievements';
 import { notify } from '../../ui/corpos';
 import { saveSafe } from './util';
+import { setWeaponUnlockFilter } from '../weapons';
 
 export type UnlockKind = 'weapon' | 'benefit' | 'desk' | 'event' | 'role';
 
@@ -104,6 +105,7 @@ export function isOwned(p: Perk): boolean {
 }
 
 export function isWeaponUnlocked(id: string): boolean { const w = WEAPONS[id]; return !w || id === 'fists' || w.rarity === 0 || profile().unlocks.includes('weapon:' + id); }
+setWeaponUnlockFilter(isWeaponUnlocked);
 export function isBenefitUnlocked(id: string): boolean { const b = BENEFITS.find((x) => x.id === id); return !b || !!b.starter || profile().unlocks.includes('benefit:' + id); }
 export function isDeskItemUnlocked(id: string): boolean { return STARTER_DESK.has(id) || profile().unlocks.includes('desk:' + id); }
 export function isEventUnlocked(id: string): boolean { return STARTER_EVENTS.has(id) || profile().unlocks.includes('event:' + id); }
