@@ -11,7 +11,7 @@ import { registerDev } from './registry';
 import { Rng } from '../../core/rng';
 import { ARCHETYPES, ArchetypeId, PlayerRoleId, Tier } from '../../data/ids';
 import { rollLook, bakeCharacter, ANIMS, AnimName, BakedCharacter, CharacterLook, drawPortraitLarge } from '../../art/characters';
-import { withAct, lastBakeStats, bakeCharacterEx } from '../../art/chars';
+import { withAct, lastBakeStats, bakeCharacterEx, PREWARM_ORDER } from '../../art/chars';
 import { drawText } from '../../render/font';
 import { rect } from '../../render/canvas';
 
@@ -115,17 +115,22 @@ class AnimsScene implements Scene {
       // bake many distinct individuals and report the average (after JIT warm-up)
       const looks: CharacterLook[] = [];
       for (let i = 0; i < 80; i++) looks.push(rollLook({ kind: 'enemy', archetype: ARCHETYPES[i % 20], tier: (i % 3) as Tier }, rng));
-      for (let i = 0; i < 20; i++) bakeCharacterEx(looks[i]);
-      const acc = { ms: 0, render: 0, upload: 0, extras: 0 };
-      const times: number[] = [];
+      for (let i = 0; i < 20; i++) bakeCharacterEx(looks[i]).bakeAnims(ANIMS);
+      const inits: number[] = [], fulls: number[] = [];
+      const per: Record<string, number[]> = {};
       for (let i = 20; i < 80; i++) {
-        bakeCharacterEx(looks[i]);
-        acc.ms += lastBakeStats.ms; acc.render += lastBakeStats.render; acc.upload += lastBakeStats.upload; acc.extras += lastBakeStats.extras;
-        times.push(lastBakeStats.ms);
+        const t0 = performance.now();
+        const b = bakeCharacterEx(looks[i]);
+        const t1 = performance.now();
+        for (const a of PREWARM_ORDER) { const ta = performance.now(); b.bakeAnims([a]); (per[a] ??= []).push(performance.now() - ta); }
+        void b.portrait; void b.gibs;
+        inits.push(t1 - t0); fulls.push(performance.now() - t0);
       }
-      times.sort((a, b) => a - b);
-      const n = 60;
-      this.benchText = `bake avg ${(acc.ms / n).toFixed(2)}ms (render ${(acc.render / n).toFixed(2)}, pack+upload ${(acc.upload / n).toFixed(2)}, portrait+gibs ${(acc.extras / n).toFixed(2)}) median ${times[30].toFixed(2)} p90 ${times[54].toFixed(2)}`;
+      const med = (a: number[]) => [...a].sort((x, y) => x - y)[a.length >> 1];
+      const perTxt = Object.entries(per).map(([a, v]) => `${a} ${med(v).toFixed(2)}`).join(', ');
+      const maxAnim = Math.max(...Object.values(per).map(med));
+      this.benchText = `initial bake (idle+walk+run) median ${med(inits).toFixed(2)}ms | per-anim median max ${maxAnim.toFixed(2)}ms | everything median ${med(fulls).toFixed(2)}ms`;
+      console.log('[bench] per-anim ms: ' + perTxt);
       console.log('[bench]', this.benchText);
       return;
     }

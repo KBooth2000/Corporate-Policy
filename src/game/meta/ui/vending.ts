@@ -19,7 +19,7 @@ import { PanelScene } from './panel';
 const TABS: { kind: UnlockKind; label: string; glyph: string }[] = [
   { kind: 'weapon', label: 'Weapons', glyph: 'skull' },
   { kind: 'benefit', label: 'Benefits', glyph: 'heart' },
-  { kind: 'desk', label: 'Desk Items', glyph: 'doc' },
+  { kind: 'desk', label: 'Desk', glyph: 'doc' },
   { kind: 'event', label: 'Events', glyph: 'mail' },
   { kind: 'role', label: 'Roles', glyph: 'user' },
 ];

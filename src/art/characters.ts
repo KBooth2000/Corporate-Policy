@@ -6,7 +6,7 @@ import type { Rng } from '../core/rng';
 import type { ArchetypeId, PlayerRoleId, Tier } from '../data/ids';
 import type { Ctx } from '../render/canvas';
 import { rollLookImpl } from './chars/look';
-import { bakeImpl, portraitLarge, BakedCharacterEx } from './chars/bake';
+import { bakeImpl, portraitLarge, prewarmImpl, BakedCharacterEx } from './chars/bake';
 
 export type AnimName =
   | 'idle' | 'walk' | 'run' | 'attack1' | 'attack2' | 'attack3' | 'heavy' | 'throw' | 'cast'
@@ -94,7 +94,11 @@ function stable(v: unknown): string {
 /** Cache key for a look (stable key order, so looks reloaded from disk hit the cache). */
 export function lookKey(look: CharacterLook): string { return stable(look); }
 
-/** Bake (or fetch from cache) every frame of one individual into an atlas. ~5–10 ms on desktop. */
+/**
+ * Bake (or fetch from cache) one individual. LAZY: only idle/walk/run are baked here; every other
+ * anim is baked (all 3 directions + flash) on its first draw()/hand() call, or ahead of time with
+ * prewarmCharacter(). duration() never bakes.
+ */
 export function bakeCharacter(look: CharacterLook): BakedCharacter {
   const key = lookKey(look);
   const hit = cache.get(key);
@@ -103,6 +107,15 @@ export function bakeCharacter(look: CharacterLook): BakedCharacter {
   cache.set(key, b);
   while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value as string);
   return b;
+}
+
+/**
+ * Bake a character's remaining anims incrementally within `budgetMs` (call once per frame after a
+ * spawn to spread the cost). Default order: hit/attacks/deaths first, cutscene poses last.
+ * Returns true once every requested anim is baked.
+ */
+export function prewarmCharacter(baked: BakedCharacter, anims?: AnimName[], budgetMs = 4): boolean {
+  return prewarmImpl(baked as BakedCharacterEx, anims, budgetMs);
 }
 
 /** Drop a baked character from the cache (e.g. a Terminated promoted enemy). */

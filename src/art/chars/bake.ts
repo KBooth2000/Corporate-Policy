@@ -1,6 +1,8 @@
-// Baking (spec 10.1): every frame of one individual is rasterised into a single atlas canvas plus a
-// white-flash silhouette atlas, once, then draw() is a single drawImage (plus a transform only when
-// mirrored/rotated/squashed). Frames are trimmed and shelf-packed; identical poses are shared.
+// Baking (spec 10.1): each individual's frames are rasterised into per-character atlas pages plus
+// white-flash silhouette pages; draw() is a single drawImage (plus a transform only when
+// mirrored/rotated/squashed). Baking is LAZY per animation: bakeImpl() bakes idle/walk/run up
+// front, every other anim (all 3 directions + flash) is baked on its first draw()/hand()/head()
+// call, or ahead of time with prewarmImpl() inside a per-frame time budget.
 import type { AnimName, BakedCharacter, CharacterLook, DrawOpts } from '../characters';
 import { ANIMS, LOOPING } from '../characters';
 import { PixBuf, C, outlineRect, toCanvas, rotateInto, mixCol } from './pixbuf';
@@ -17,8 +19,7 @@ import { drawLanyard, drawFlair } from './items';
 
 /** Scratch cell: 64×60 with the feet origin at (32, 50). */
 export const CELL_W = 64, CELL_H = 60, CELL_OX = 32, CELL_OY = 50;
-const ATLAS_W = 1024;
-const ATLAS_MAX_H = 2048;
+const ATLAS_W = 512;
 
 interface FrameRec {
   sx: number; sy: number; w: number; h: number;
@@ -32,22 +33,15 @@ interface FrameRec {
 }
 
 const VIEWS: View[] = ['front', 'side', 'back'];
-/** Anims whose frames may repeat exactly (no per-frame pulse): shared cells. */
-const SHARE = new Set<AnimName>();
 
 // Reused work buffers (allocated once).
 let scratchA: PixBuf | null = null, scratchB: PixBuf | null = null, fxA: PixBuf | null = null, fxB: PixBuf | null = null;
-let atlasBuf: PixBuf | null = null;
-let atlasImg: ImageData | null = null;
-function work(): { A: PixBuf; B: PixBuf; FA: PixBuf; FB: PixBuf; AT: PixBuf; img: ImageData } {
+function work(): { A: PixBuf; B: PixBuf; FA: PixBuf; FB: PixBuf } {
   if (!scratchA) {
     scratchA = new PixBuf(CELL_W, CELL_H, true); scratchB = new PixBuf(CELL_W, CELL_H, true);
     fxA = new PixBuf(CELL_W, CELL_H); fxB = new PixBuf(CELL_W, CELL_H);
-    // the atlas raster IS the ImageData's memory: upload is a single putImageData, no copy
-    atlasImg = ctx2d(makeCanvas(1, 1)).createImageData(ATLAS_W, ATLAS_MAX_H);
-    atlasBuf = new PixBuf(ATLAS_W, ATLAS_MAX_H, false, atlasImg.data.buffer as ArrayBuffer);
   }
-  return { A: scratchA!, B: scratchB!, FA: fxA!, FB: fxB!, AT: atlasBuf!, img: atlasImg! };
+  return { A: scratchA!, B: scratchB!, FA: fxA!, FB: fxB! };
 }
 
 function poseCtx(d: Dress, look: CharacterLook): PoseCtx {
@@ -98,15 +92,29 @@ function renderFrame(d: Dress, pose: Pose, dir: number, f: number, n: number, ca
 }
 
 export interface BakeStats { ms: number; frames: number; unique: number; atlasW: number; atlasH: number; render: number; upload: number; extras: number }
+/** Stats of the most recent bake call (initial bake or one lazy anim batch). */
 export let lastBakeStats: BakeStats = { ms: 0, frames: 0, unique: 0, atlasW: 0, atlasH: 0, render: 0, upload: 0, extras: 0 };
+/** Running totals for profiling: initial bakes and per-anim lazy batches. */
+export const bakeTimings = {
+  initial: { ms: 0, n: 0 },
+  anim: {} as Partial<Record<AnimName, { ms: number; n: number }>>,
+  reset(): void { this.initial = { ms: 0, n: 0 }; this.anim = {}; },
+};
 
 export interface BakedCharacterEx extends BakedCharacter {
   /** Head centre relative to the feet for a frame (attach execution victims, bark bubbles). */
   head(anim: AnimName, dir: number, t: number): { x: number; y: number };
   /** Frame index for an anim at time t (useful for gameplay events on specific frames). */
   frameAt(anim: AnimName, t: number): number;
-  atlas: HTMLCanvasElement;
-  flashAtlas: HTMLCanvasElement;
+  /** True once an anim's frames are in the atlas. */
+  isBaked(anim: AnimName): boolean;
+  /** Bake the given anims now (no-op for ones already baked). */
+  bakeAnims(anims: AnimName[]): void;
+  /** Atlas pages (main + white flash); pages grow as anims are baked lazily. */
+  pages: { canvas: HTMLCanvasElement; flash: HTMLCanvasElement }[];
+  /** First atlas page (kept for debugging/back-compat). */
+  readonly atlas: HTMLCanvasElement;
+  readonly flashAtlas: HTMLCanvasElement;
   dress: Dress;
 }
 
@@ -142,101 +150,169 @@ function shadowSprite(w: number): HTMLCanvasElement {
   return c;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Atlas pages (per character, growable) and the shared batch strip
+
+interface Page {
+  canvas: HTMLCanvasElement; flash: HTMLCanvasElement;
+  /** Allocated height and used height. */
+  h: number; used: number;
+  /** Bumped on every upload (invalidates the lazily built rage silhouette). */
+  version: number;
+  rage: HTMLCanvasElement | null; rageV: number;
+}
+
+interface FrameRecP extends FrameRec { page: Page }
+
+/** Anims baked up front: what every character shows immediately on spawn. */
+export const INITIAL_ANIMS: AnimName[] = ['idle', 'walk', 'run'];
+/** Default prewarm order: combat reactions first, rare/cutscene poses last. */
+export const PREWARM_ORDER: AnimName[] = ['hit', 'attack1', 'attack2', 'attack3', 'heavy', 'throw', 'cast', 'dash', 'stagger', 'death1', 'death2', 'death3', 'knockdown', 'getup', 'grabbed', 'thrown', 'flee', 'chant', 'celebrate', 'rage', 'exec_hold', 'exec_slam', 'exec_hurl', 'victim_slam', 'victim_shock', 'sit'];
+
+const PAGE_MAX_H = 2048;
+const STRIP_H = 1024;
+let stripImg: ImageData | null = null, stripBuf: PixBuf | null = null;
+let flashImg: ImageData | null = null, flashBuf: PixBuf | null = null;
+function strips(): { SB: PixBuf; SI: ImageData; FB2: PixBuf; FI: ImageData } {
+  if (!stripImg) {
+    const g = ctx2d(makeCanvas(1, 1));
+    stripImg = g.createImageData(ATLAS_W, STRIP_H);
+    stripBuf = new PixBuf(ATLAS_W, STRIP_H, false, stripImg.data.buffer as ArrayBuffer);
+    flashImg = g.createImageData(ATLAS_W, STRIP_H);
+    flashBuf = new PixBuf(ATLAS_W, STRIP_H, false, flashImg.data.buffer as ArrayBuffer);
+  }
+  return { SB: stripBuf!, SI: stripImg!, FB2: flashBuf!, FI: flashImg! };
+}
+
+function newPage(h: number): Page {
+  return { canvas: makeCanvas(ATLAS_W, h), flash: makeCanvas(ATLAS_W, h), h, used: 0, version: 0, rage: null, rageV: -1 };
+}
+
+/** Grow a page's canvases (GPU copy) so `need` rows fit; doubles so a full bake grows ~2 times. */
+function growPage(p: Page, need: number): void {
+  let nh = p.h;
+  while (nh < need) nh *= 2;
+  nh = Math.min(PAGE_MAX_H, nh);
+  if (nh <= p.h) return;
+  const c = makeCanvas(ATLAS_W, nh), f = makeCanvas(ATLAS_W, nh);
+  if (p.used > 0) {
+    ctx2d(c).drawImage(p.canvas, 0, 0, ATLAS_W, p.used, 0, 0, ATLAS_W, p.used);
+    ctx2d(f).drawImage(p.flash, 0, 0, ATLAS_W, p.used, 0, 0, ATLAS_W, p.used);
+  }
+  p.canvas = c; p.flash = f; p.h = nh;
+}
+
 export function bakeImpl(look: CharacterLook): BakedCharacterEx {
   const t0 = performance.now();
   const d = resolveDress(look);
   const ctx = poseCtx(d, look);
-  const { AT, img } = work();
-  resetStampPool();
-  const frames: FrameRec[] = [];
-  const index = {} as Record<AnimName, number[][]>;
-  const dedupe = new Map<string, number>();
-  const stamps = new Map<string, PixBuf>();
-  let cx = 0, cy = 0, rowH = 0;
-  let usedH = 0;
-  // clear only what we'll use (previous bake's used height)
-  AT.d.fill(0, 0, ATLAS_W * Math.min(ATLAS_MAX_H, lastUsedH + 2));
-  let total = 0;
-  for (const anim of ANIMS) {
-    const n = TIMING[anim].length;
-    const perDir: number[][] = [];
-    const poses: Pose[] = [];
-    for (let f = 0; f < n; f++) poses.push(animPose(anim, f, ctx));
-    for (let dir = 0; dir < 3; dir++) {
-      const list: number[] = [];
-      for (let f = 0; f < n; f++) {
-        total++;
-        const p = poses[f];
-        // identical frames (same pose, no glow pulse) share one atlas cell
-        const pulse = (d.lanyard?.glow != null && p.glow > 0) || d.flair.sparkle;
-        const k = pulse || !SHARE.has(anim) ? '' : dir + '|' + anim + f;
-        const hit = k ? dedupe.get(k) : undefined;
-        if (hit !== undefined) { list.push(hit); continue; }
-        const r = renderFrame(d, p, dir, f, n, stamps);
-        const buf = r.buf, fxb = r.fx;
-        const bx0 = Math.min(buf.bx0, fxb.bx0), by0 = Math.min(buf.by0, fxb.by0);
-        const bx1 = Math.max(buf.bx1, fxb.bx1), by1 = Math.max(buf.by1, fxb.by1);
-        let rec: FrameRec;
-        if (bx1 < bx0) {
-          rec = { sx: 0, sy: 0, w: 1, h: 1, ox: 0, oy: 0, hx: r.hx, hy: r.hy, behind: r.behind, headX: r.headX, headY: r.headY, lying: r.lying };
-        } else {
-          const w = bx1 - bx0 + 3, h = by1 - by0 + 3;
-          if (cx + w + 1 > ATLAS_W) { cx = 0; cy += rowH + 1; rowH = 0; }
-          if (cy + h > ATLAS_MAX_H) throw new Error('character atlas overflow');
-          // outline inside the small (cache-friendly) scratch, then memcpy rows into the atlas
-          const ox0 = Math.max(0, buf.bx0 - 1), oy0 = Math.max(0, buf.by0 - 1);
-          if (buf.bx1 >= buf.bx0) outlineRect(buf, ox0, oy0, Math.min(CELL_W - 1, buf.bx1 + 1) - ox0 + 1, Math.min(CELL_H - 1, buf.by1 + 1) - oy0 + 1, OUT);
-          const sx0 = bx0 - 1, sy0 = by0 - 1; // frame rect origin in scratch space (may be -1 at edges)
-          const AD = AT.d, SD = buf.d;
-          for (let j = 0; j < h; j++) {
-            const sy = sy0 + j;
-            const drow = (cy + j) * ATLAS_W + cx;
-            if (sy < 0 || sy >= CELL_H) { for (let x = 0; x < w; x++) AD[drow + x] = 0; continue; }
-            const srow = sy * CELL_W + sx0;
-            for (let x = 0; x < w; x++) { const X = sx0 + x; AD[drow + x] = X >= 0 && X < CELL_W ? SD[srow + x] : 0; }
-          }
-          // FX go on top, but only over empty pixels (never over the body or its outline)
-          if (fxb.bx1 >= fxb.bx0) {
-            const dx = cx - sx0, dy = cy - sy0;
-            for (let y = fxb.by0; y <= fxb.by1; y++) {
-              const so = y * CELL_W, doff = (y + dy) * ATLAS_W + dx;
-              for (let x = fxb.bx0; x <= fxb.bx1; x++) {
-                const e = fxb.d[so + x];
-                if (e >>> 24 && !(AT.d[doff + x] >>> 24)) AT.d[doff + x] = e;
-              }
-            }
-          }
-          rec = { sx: cx, sy: cy, w, h, ox: CELL_OX - sx0, oy: CELL_OY - sy0, hx: r.hx, hy: r.hy, behind: r.behind, headX: r.headX, headY: r.headY, lying: r.lying };
-          cx += w + 1;
-          rowH = Math.max(rowH, h);
-          usedH = Math.max(usedH, cy + rowH + 1);
-        }
-        const idx = frames.length;
-        frames.push(rec);
-        if (k) dedupe.set(k, idx);
-        list.push(idx);
-      }
-      perDir.push(list);
-    }
-    index[anim] = perDir;
-  }
-  const t1 = performance.now();
-  lastUsedH = usedH;
-  const H = Math.max(1, usedH);
-  const atlas = makeCanvas(ATLAS_W, H);
-  ctx2d(atlas).putImageData(img, 0, 0, 0, 0, ATLAS_W, H);
-  // white flash silhouette, composited on the GPU (no per-pixel JS)
-  const flashAtlas = tintAtlas(atlas, '#ffffff');
-  const t2 = performance.now();
-  const portrait = makePortrait(d, ctx, 24, 24);
-  const gibs = makeGibs(d, look);
-  const t3 = performance.now();
+  const pages: Page[] = [];
+  const frames: FrameRecP[] = [];
+  const index: Partial<Record<AnimName, number[][]>> = {};
   const durations = {} as Record<AnimName, number>;
   for (const a of ANIMS) durations[a] = TIMING[a].reduce((s, v) => s + v, 0);
-  const idle = frames[index.idle[0][0]];
+
+  /** Render + pack + upload a batch of anims (all 3 directions, main + flash). */
+  const bakeAnims = (list: AnimName[]): void => {
+    const todo = list.filter((a) => !index[a]);
+    if (!todo.length) return;
+    const tb = performance.now();
+    const { SB, SI, FB2, FI } = strips();
+    resetStampPool();
+    const stamps = new Map<string, PixBuf>();
+    const AD = SB.d;
+    let cx = 0, cy = 0, rowH = 0, usedH = 0, total = 0;
+    const placed: FrameRecP[] = [];
+    const pending: Page = { canvas: null as unknown as HTMLCanvasElement, flash: null as unknown as HTMLCanvasElement, h: 0, used: 0, version: 0, rage: null, rageV: -1 };
+    const newIdx: Partial<Record<AnimName, number[][]>> = {};
+    for (const anim of todo) {
+      const n = TIMING[anim].length;
+      const perDir: number[][] = [];
+      const poses: Pose[] = [];
+      for (let f = 0; f < n; f++) poses.push(animPose(anim, f, ctx));
+      for (let dir = 0; dir < 3; dir++) {
+        const ids: number[] = [];
+        for (let f = 0; f < n; f++) {
+          total++;
+          const r = renderFrame(d, poses[f], dir, f, n, stamps);
+          const buf = r.buf, fxb = r.fx;
+          const bx0 = Math.min(buf.bx0, fxb.bx0), by0 = Math.min(buf.by0, fxb.by0);
+          const bx1 = Math.max(buf.bx1, fxb.bx1), by1 = Math.max(buf.by1, fxb.by1);
+          let rec: FrameRecP;
+          if (bx1 < bx0) {
+            rec = { page: pending, sx: 0, sy: 0, w: 1, h: 1, ox: 0, oy: 0, hx: r.hx, hy: r.hy, behind: r.behind, headX: r.headX, headY: r.headY, lying: r.lying };
+          } else {
+            const w = bx1 - bx0 + 3, h = by1 - by0 + 3;
+            if (cx + w + 1 > ATLAS_W) { cx = 0; cy += rowH + 1; rowH = 0; }
+            if (cy + h > STRIP_H) throw new Error('character atlas batch overflow');
+            // clear the strip rows as the shelf first reaches them (stale data from other bakes)
+            if (cy + h > usedH) { AD.fill(0, usedH * ATLAS_W, (cy + h + 1) * ATLAS_W); usedH = cy + h + 1; }
+            // outline inside the small (cache-friendly) scratch, then copy rows into the strip
+            const ox0 = Math.max(0, buf.bx0 - 1), oy0 = Math.max(0, buf.by0 - 1);
+            if (buf.bx1 >= buf.bx0) outlineRect(buf, ox0, oy0, Math.min(CELL_W - 1, buf.bx1 + 1) - ox0 + 1, Math.min(CELL_H - 1, buf.by1 + 1) - oy0 + 1, OUT);
+            const sx0 = bx0 - 1, sy0 = by0 - 1;
+            const SD = buf.d;
+            for (let j = 0; j < h; j++) {
+              const sy = sy0 + j;
+              const drow = (cy + j) * ATLAS_W + cx;
+              if (sy < 0 || sy >= CELL_H) { for (let x = 0; x < w; x++) AD[drow + x] = 0; continue; }
+              const srow = sy * CELL_W + sx0;
+              for (let x = 0; x < w; x++) { const X = sx0 + x; AD[drow + x] = X >= 0 && X < CELL_W ? SD[srow + x] : 0; }
+            }
+            // FX go on top, but only over empty pixels (never over the body or its outline)
+            if (fxb.bx1 >= fxb.bx0) {
+              const dx = cx - sx0, dy = cy - sy0;
+              for (let y = fxb.by0; y <= fxb.by1; y++) {
+                const so = y * CELL_W, doff = (y + dy) * ATLAS_W + dx;
+                for (let x = fxb.bx0; x <= fxb.bx1; x++) {
+                  const e = fxb.d[so + x];
+                  if (e >>> 24 && !(AD[doff + x] >>> 24)) AD[doff + x] = e;
+                }
+              }
+            }
+            rec = { page: pending, sx: cx, sy: cy, w, h, ox: CELL_OX - sx0, oy: CELL_OY - sy0, hx: r.hx, hy: r.hy, behind: r.behind, headX: r.headX, headY: r.headY, lying: r.lying };
+            cx += w + 1;
+            rowH = Math.max(rowH, h);
+          }
+          ids.push(frames.length + placed.length);
+          placed.push(rec);
+        }
+        perDir.push(ids);
+      }
+      newIdx[anim] = perDir;
+    }
+    const stripH = Math.max(1, cy + rowH + 1);
+    if (usedH < stripH) AD.fill(0, usedH * ATLAS_W, stripH * ATLAS_W);
+    const t1 = performance.now();
+    // white flash strip (same alpha, white RGB)
+    const FD = FB2.d, N = ATLAS_W * stripH;
+    for (let i = 0; i < N; i++) { const c = AD[i]; FD[i] = c >>> 24 ? ((c & 0xff000000) | 0x00ffffff) >>> 0 : 0; }
+    // find/grow a page and upload the strip with two putImageData calls
+    let page = pages[pages.length - 1];
+    if (!page || page.used + stripH > PAGE_MAX_H) { page = newPage(Math.max(256, Math.ceil(stripH / 64) * 64)); pages.push(page); }
+    if (page.used + stripH > page.h) growPage(page, page.used + stripH);
+    const y0 = page.used;
+    ctx2d(page.canvas).putImageData(SI, 0, y0, 0, 0, ATLAS_W, stripH);
+    ctx2d(page.flash).putImageData(FI, 0, y0, 0, 0, ATLAS_W, stripH);
+    page.used += stripH;
+    page.version++;
+    for (const rec of placed) { rec.page = page; rec.sy += y0; frames.push(rec); }
+    for (const a of todo) index[a] = newIdx[a];
+    const t2 = performance.now();
+    const ms = t2 - tb;
+    for (const a of todo) {
+      const e = bakeTimings.anim[a] ?? (bakeTimings.anim[a] = { ms: 0, n: 0 });
+      e.ms += ms / todo.length; e.n++;
+    }
+    lastBakeStats = { ms, frames: total, unique: placed.length, atlasW: ATLAS_W, atlasH: pages.reduce((s, p) => s + p.used, 0), render: t1 - tb, upload: t2 - t1, extras: 0 };
+  };
+
+  bakeAnims(INITIAL_ANIMS);
+  const tInit = performance.now();
+  let portraitC: HTMLCanvasElement | null = null, gibsC: HTMLCanvasElement[] | null = null;
+  const idle = frames[index.idle![0][0]];
   const height = Math.max(20, idle.oy - 1);
   const shadowW = d.build === 'heavy' ? 18 : d.build === 'slim' ? 12 : 14;
-  let rageAtlas: HTMLCanvasElement | null = null;
 
   const frameAt = (anim: AnimName, t: number): number => {
     const tm = TIMING[anim];
@@ -247,10 +323,16 @@ export function bakeImpl(look: CharacterLook): BakedCharacterEx {
     for (let i = 0; i < tm.length; i++) { if (tt < tm[i]) return i; tt -= tm[i]; }
     return tm.length - 1;
   };
-  const recFor = (anim: AnimName, dir: number, t: number): FrameRec => {
+  const recFor = (anim: AnimName, dir: number, t: number): FrameRecP => {
+    if (!TIMING[anim]) anim = 'idle';
+    let perDir = index[anim];
+    if (!perDir) { bakeAnims([anim]); perDir = index[anim]!; }
     const dd = dir === 3 ? 1 : ((dir % 4) + 4) % 4;
-    const list = (index[anim] ?? index.idle)[dd === 3 ? 1 : dd];
-    return frames[list[frameAt(anim, t)]];
+    return frames[perDir[dd === 3 ? 1 : dd][frameAt(anim, t)]];
+  };
+  const rageOf = (p: Page): HTMLCanvasElement => {
+    if (!p.rage || p.rageV !== p.version) { p.rage = tintAtlas(p.flash, '#ff3a2a'); p.rageV = p.version; }
+    return p.rage;
   };
 
   const blitCell = (g: Ctx, img: CanvasImageSource, rec: FrameRec, x: number, y: number, mirror: boolean, o: DrawOpts | undefined) => {
@@ -268,9 +350,16 @@ export function bakeImpl(look: CharacterLook): BakedCharacterEx {
   };
 
   const baked: BakedCharacterEx = {
-    look, height, portrait, gibs, shadowW, atlas, flashAtlas, dress: d,
+    look, height, shadowW, dress: d,
+    get portrait() { return portraitC ?? (portraitC = makePortrait(d, ctx, 24, 24)); },
+    get gibs() { return gibsC ?? (gibsC = makeGibs(d, look)); },
+    get pages() { return pages.map((p) => ({ canvas: p.canvas, flash: p.flash })); },
+    get atlas() { return pages[0].canvas; },
+    get flashAtlas() { return pages[0].flash; },
     duration: (anim) => durations[anim] ?? 0.6,
     frameAt,
+    isBaked: (anim) => !!index[anim],
+    bakeAnims,
     hand(anim, dir, t) {
       const r = recFor(anim, dir, t);
       return { x: dir === 3 ? -r.hx : r.hx, y: r.hy, behind: r.behind };
@@ -281,6 +370,7 @@ export function bakeImpl(look: CharacterLook): BakedCharacterEx {
     },
     draw(g, anim, dir, t, x0, y0, o) {
       const rec = recFor(anim, dir, t);
+      const pg = rec.page;
       const x = Math.round(x0), y = Math.round(y0);
       const mirror = dir === 3;
       const alpha = o?.alpha ?? 1;
@@ -293,20 +383,20 @@ export function bakeImpl(look: CharacterLook): BakedCharacterEx {
         g.drawImage(s, x - (sw >> 1), y - (s.height >> 1) - (rec.lying ? 4 : 0));
       }
       if (o?.rage) {
-        if (!rageAtlas) rageAtlas = tintAtlas(flashAtlas, '#ff3a2a');
+        const ra = rageOf(pg);
         const pulse = 0.45 + 0.25 * Math.sin(t * 18);
         g.globalAlpha = prevA * alpha * pulse;
-        blitCell(g, rageAtlas, rec, x - 1, y, mirror, o);
-        blitCell(g, rageAtlas, rec, x + 1, y, mirror, o);
-        blitCell(g, rageAtlas, rec, x, y - 1, mirror, o);
-        blitCell(g, rageAtlas, rec, x, y + 1, mirror, o);
+        blitCell(g, ra, rec, x - 1, y, mirror, o);
+        blitCell(g, ra, rec, x + 1, y, mirror, o);
+        blitCell(g, ra, rec, x, y - 1, mirror, o);
+        blitCell(g, ra, rec, x, y + 1, mirror, o);
       }
       g.globalAlpha = prevA * alpha;
-      blitCell(g, atlas, rec, x, y, mirror, o);
+      blitCell(g, pg.canvas, rec, x, y, mirror, o);
       if (o?.tint && (o.tintAmt ?? 0) > 0) {
         const [tc, tg] = tintScratch();
         tg.globalCompositeOperation = 'copy';
-        tg.drawImage(flashAtlas, rec.sx, rec.sy, rec.w, rec.h, 0, 0, rec.w, rec.h);
+        tg.drawImage(pg.flash, rec.sx, rec.sy, rec.w, rec.h, 0, 0, rec.w, rec.h);
         tg.globalCompositeOperation = 'source-in';
         tg.fillStyle = o.tint;
         tg.fillRect(0, 0, rec.w, rec.h);
@@ -315,22 +405,37 @@ export function bakeImpl(look: CharacterLook): BakedCharacterEx {
         blitCell(g, tc, { ...rec, sx: 0, sy: 0 }, x, y, mirror, o);
       }
       if (o?.rage && !o.tint) {
-        if (!rageAtlas) rageAtlas = tintAtlas(flashAtlas, '#ff3a2a');
         g.globalAlpha = prevA * alpha * 0.14;
-        blitCell(g, rageAtlas, rec, x, y, mirror, o);
+        blitCell(g, rageOf(pg), rec, x, y, mirror, o);
       }
       if (o?.flash && o.flash > 0) {
         g.globalAlpha = prevA * alpha * Math.min(1, o.flash);
-        blitCell(g, flashAtlas, rec, x, y, mirror, o);
+        blitCell(g, pg.flash, rec, x, y, mirror, o);
       }
       g.globalAlpha = prevA;
     },
   };
-  lastBakeStats = { ms: performance.now() - t0, frames: total, unique: frames.length, atlasW: ATLAS_W, atlasH: usedH, render: t1 - t0, upload: t2 - t1, extras: t3 - t2 };
+  bakeTimings.initial.ms += tInit - t0; bakeTimings.initial.n++;
+  lastBakeStats = { ...lastBakeStats, ms: tInit - t0 };
   return baked;
 }
-let lastUsedH = ATLAS_MAX_H;
 
+/**
+ * Bake a character's remaining anims incrementally (call once per frame). Bakes whole anims until
+ * `budgetMs` is used; returns true when every requested anim is baked.
+ */
+export function prewarmImpl(b: BakedCharacterEx, anims: AnimName[] = PREWARM_ORDER, budgetMs = 4): boolean {
+  const t0 = performance.now();
+  for (const a of anims) {
+    if (b.isBaked(a)) continue;
+    if (performance.now() - t0 >= budgetMs) return false;
+    b.bakeAnims([a]);
+  }
+  return anims.every((a) => b.isBaked(a));
+}
+
+/** Bake every anim now (galleries, tools, preloading on a loading screen). */
+export function bakeAllAnims(b: BakedCharacterEx): void { b.bakeAnims(ANIMS); }
 
 function tintAtlas(src: HTMLCanvasElement, col: string): HTMLCanvasElement {
   const c = makeCanvas(src.width, src.height);

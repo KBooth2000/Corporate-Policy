@@ -63,7 +63,10 @@ const EXEC_FIRST = 2, BOSS_FIRST = 5, ACT_FIRST = 3, WIN_FIRST = 10, ROLE_WIN_FI
 
 /** Achievements earned during the run in progress (collected by the per-floor listeners and reported on the summary). */
 const earnedThisRun: string[] = [];
-function ach(id: string): void { if (awardAchievement(id)) { const d = ACHIEVEMENT_BY_ID.get(id); if (d) earnedThisRun.push(d.name); } }
+/** At run end achievements are bundled into one toast (the summary deck lists them all); mid-run ones toast individually. */
+let endPhase = false;
+const endNames: string[] = [];
+function ach(id: string): void { if (awardAchievement(id, endPhase)) { const d = ACHIEVEMENT_BY_ID.get(id); if (d) { earnedThisRun.push(d.name); if (endPhase) endNames.push(d.name); } } }
 
 // ---------------------------------------------------------------------------
 export function bossesBeaten(run: RunState, won: boolean): number {
@@ -150,7 +153,10 @@ function onRunEnd(s: GameplayScene, won: boolean): void {
   syncRadioUnlocks();
 
   // ---- achievements derived from the finished run + lifetime stats
+  endPhase = true; endNames.length = 0;
   runEndAchievements(s, won, nb);
+  endPhase = false;
+  if (endNames.length) notify({ kind: 'good', title: `${endNames.length} achievement${endNames.length === 1 ? '' : 's'} unlocked`, body: endNames.slice(0, 3).join(', ') + (endNames.length > 3 ? ` and ${endNames.length - 3} more` : '') + '.', icon: 'star', sound: 'ui_unlock', duration: 4.5 });
 
   // ---- score + daily
   const score = computeScore(run, won, duration);

@@ -356,7 +356,7 @@ export class HubScene implements Scene {
       const act = this.near === s, foc = this.hover === s || P.stations[this.focusIdx] === s;
       const bob = Math.round(Math.sin(this.t * 3 + s.x) * 1.5);
       const ic = icon(s.icon);
-      const mx = Math.round(s.x - 8), my = Math.round(s.y - 30 + bob);
+      const mx = Math.round(s.x - 8), my = Math.round(s.y + (s.markerDy ?? -30) + bob);
       g.globalAlpha = act ? 1 : foc ? 0.95 : 0.55;
       g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(mx - 1, my - 1, 18, 18);
       g.fillStyle = act ? '#ffd34d' : 'rgba(255,255,255,0.35)'; g.fillRect(mx - 2, my - 2, 20, 1); g.fillRect(mx - 2, my + 17, 20, 1); g.fillRect(mx - 2, my - 2, 1, 20); g.fillRect(mx + 17, my - 2, 1, 20);

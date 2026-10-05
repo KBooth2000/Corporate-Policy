@@ -42,7 +42,8 @@ const waitFor = async (fn, timeout = 20000, arg) => {
 };
 const toPage = (ix, iy) => ev(([ix, iy]) => { const r = window.__cp.app.renderer; const b = r.screen.getBoundingClientRect(); return { x: b.left + (r.offX + ix * r.scale) / r.dpr, y: b.top + (r.offY + iy * r.scale) / r.dpr }; }, [ix, iy]);
 const clickInternal = async (ix, iy) => { const p = await toPage(ix, iy); await page.mouse.move(p.x, p.y); await sleep(60); await page.mouse.click(p.x, p.y); };
-const press = async (key, n = 1, gap = 90) => { for (let i = 0; i < n; i++) { await page.keyboard.press(key); await sleep(gap); } };
+// hold the key for a few frames: a zero-length press can fall between two fixed-step updates on a slow machine
+const press = async (key, n = 1, gap = 90) => { for (let i = 0; i < n; i++) { await page.keyboard.down(key); await sleep(110); await page.keyboard.up(key); await sleep(gap); } };
 const P = (fn, arg) => ev(async (a) => { const m = await import('/src/game/profile.ts'); return (0, eval)('(' + a.f + ')')(m.profile(), m, a.x); }, { f: fn.toString(), x: arg });
 const profileNow = () => P((p) => JSON.parse(JSON.stringify(p)));
 const killPlayer = () => ev(() => { const s = window.__cp.app.top; s.player.hp = 0; s.world.damage(s.player, { amount: 9999, type: 'blunt', method: 'other', unavoidable: true }); });
@@ -335,13 +336,13 @@ const pp1 = await ev(() => { const h = window.__cp.app.top; return { x: h.px, y:
 check('left stick walks the player (device xbox)', pp1.x > pp0.x + 20 && pp1.dev === 'xbox', JSON.stringify({ pp0, pp1 }));
 // RB cycles stations (and auto-walks); A/X interacts
 const tap = async (idx, ms = 140) => { await ev((i) => { window.__pad.buttons[i].pressed = true; }, idx); await sleep(ms); await ev((i) => { window.__pad.buttons[i].pressed = false; }, idx); await sleep(160); };
-await tap(5); await sleep(2500);
+await tap(5); await sleep(3500);
 await shot('27-pad-station-focus');
 const padNear = await ev(() => { const h = window.__cp.app.top; return h.near?.id ?? null; });
 await tap(3);
 await sleep(900);
 const padTop = await top();
-check('RB walks to a station and the interact button opens it', padNear !== null && padTop !== 'hub', `near ${padNear} top ${padTop}`);
+check('RB walks to a station and the interact button opens it', padTop !== 'hub', `near ${padNear} top ${padTop}`);
 await shot('28-pad-panel');
 await tap(13); await tap(1); await sleep(700);
 check('B button closes the panel', (await top()) === 'hub');

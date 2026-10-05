@@ -35,6 +35,8 @@ export interface StationDef {
   hint: string;
   /** screen y of the top of the prompt bubble (defaults to above the box) */
   labelY?: number;
+  /** vertical offset of the floating marker icon from the interaction point (default -30) */
+  markerDy?: number;
 }
 
 export interface Lamp { x: number; y: number; rx: number; ry: number; strength: number; flicker?: boolean }
@@ -397,7 +399,7 @@ export function paintDailyScreen(c: HTMLCanvasElement, o: { date: string; code: 
   drawText(g, o.date, w - 8, 6, { color: '#9fe0b4', align: 'right', shadow: null });
   drawText(g, 'SEED ' + o.code, 8, 16, { color: '#ffd34d', shadow: null });
   R(g, 6, 26, w - 12, 1, '#1f5a60');
-  const fit = (t: string, max: number) => { while (measure(t) > max && t.length > 4) t = t.slice(0, -2); return t; };
+  const fit = (t: string, max: number) => { while (measure(t) > max && t.includes(', ')) t = t.slice(0, t.lastIndexOf(', ')); while (measure(t) > max && t.length > 4) t = t.slice(0, -1); return t; };
   drawText(g, fit(o.mods.length ? o.mods.join(', ') : 'No modifiers', w - 16), 8, 30, { color: '#9fe0b4', shadow: null });
   if (o.top.length) drawText(g, `BEST ${o.top[0].score.toLocaleString('en-GB')}  FLOOR ${o.top[0].floor}`, 8, 40, { color: '#fff6d8', shadow: null });
   drawText(g, o.assist ? 'ASSIST ON: PRACTICE ONLY' : o.scored ? 'SCORED ATTEMPT READY' : 'ATTEMPT USED: PRACTICE', 8, o.top.length ? 50 : 42, { color: o.scored && !o.assist ? '#7fff9c' : '#ffb04d', shadow: null });
@@ -453,7 +455,7 @@ export function buildCarPark(o: BuildOpts): CarPark {
   const box = (x: number, y: number, w: number, h: number): Rect => ({ x: X(x), y: Y(y), w, h });
   const stations: StationDef[] = [
     { id: 'vending', name: 'Vending Machine', short: 'Vending', icon: 'vending', x: X(96), y: Y(138), r: 22, box: box(80, 80, 34, 46), hint: 'Spend Annual Leave on unlocks' },
-    { id: 'daily', name: 'Daily Run Board', short: 'Daily', icon: 'daily', x: X(318), y: Y(124), r: 24, box: box(232, 50, 172, 60), hint: "Today's published seed and board" },
+    { id: 'daily', name: 'Daily Run Board', short: 'Daily', icon: 'daily', x: X(318), y: Y(124), r: 24, box: box(232, 50, 172, 60), hint: "Today's published seed and board", markerDy: -2 },
     { id: 'noticeboard', name: 'Internal Announcements', short: 'Notices', icon: 'noticeboard', x: X(560), y: Y(146), r: 22, box: box(530, 78, 60, 58), hint: 'The promoted-staff roster' },
     { id: 'carboot', name: 'Car Boot', short: 'Boot', icon: 'boot', x: X(240), y: Y(226), r: 17, box: box(252, 188, 36, 44), hint: 'Choose your role and loadout', labelY: Y(160) },
     { id: 'radio', name: 'Car Radio', short: 'Radio', icon: 'radio', x: X(300), y: Y(196), r: 15, box: box(290, 190, 30, 20), hint: 'Soundtrack and DJ', labelY: Y(160) },

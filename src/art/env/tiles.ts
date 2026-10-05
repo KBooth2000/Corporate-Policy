@@ -56,7 +56,7 @@ function drawCarpet(g: Ctx, s: Skin, base: [string, string, string], fleck: stri
       }
     }
   } else if (style === 'stripe') {
-    for (let y = 0; y < SHEET; y += 32) { rect(g, 0, y + 6, SHEET, 2, fleck); rect(g, 0, y + 10, SHEET, 1, shade(fleck, -0.3)); rect(g, 0, y + 24, SHEET, 1, l); }
+    rect(g, 0, 20, SHEET, 8, l); rect(g, 0, 23, SHEET, 1, mixHex(b, fleck, 0.6)); rect(g, 0, 52, SHEET, 1, mixHex(b, fleck, 0.35));
   } else if (style === 'pinstripe') {
     for (let x = 0; x < SHEET; x += 4) for (let y = 0; y < SHEET; y++) if ((h2(x, y, seed) & 7) !== 0) px(g, x, y, l);
   } else if (style === 'speckle') {
@@ -140,7 +140,7 @@ function drawSheet(g: Ctx, s: Skin, mat: number): void {
         let x = h2(v, 1, seed) % SHEET, y = 0;
         while (y < SHEET) { px(g, x % SHEET, y, vein); if ((h2(x, y, seed) & 3) === 0) px(g, (x + 1) % SHEET, y, shade(vein, 0.2)); y++; x += (h2(v, y, seed) % 3) - 1 + SHEET; }
       }
-      rect(g, 0, 0, SHEET, 1, inlay); rect(g, 0, 0, 1, SHEET, inlay); rect(g, 0, 32, SHEET, 1, shade(b, -0.12)); rect(g, 32, 0, 1, SHEET, shade(b, -0.12));
+      rect(g, 0, 0, SHEET, 1, mixHex(b, inlay, 0.55)); rect(g, 0, 0, 1, SHEET, mixHex(b, inlay, 0.55)); rect(g, 0, 32, SHEET, 1, shade(b, -0.08)); rect(g, 32, 0, 1, SHEET, shade(b, -0.08));
       break;
     }
     case MAT.CORE: {
@@ -406,26 +406,27 @@ function drawVoid(g: Ctx, m: FloorMap, s: Skin, x: number, y: number, dist: Int1
       rect(g, X, Y, TILE, TILE, '#34363a');
       speckle(g, X, Y, TILE, TILE, ['#3c3e42', '#2c2e32'], 0.15, h2(x, y, 5));
       if (d === 4) rect(g, X, Y, TILE, 2, '#a8a8a0');
-      if (d % 6 === 0 && (x & 1) === 0) rect(g, X + 2, Y + 7, 10, 2, '#c8c0a0');
+      if (d === 7 && (x % 3) === 0) rect(g, X + 2, Y + 7, 10, 2, '#c8c0a0');
     }
   } else {
-    // city at night far below
-    rect(g, X, Y, TILE, TILE, s.exterior === 'clouds' ? '#0c0a14' : '#0b1018');
-    const bx = Math.floor(x / 3), by = Math.floor(y / 3);
+    // city at night far below: irregular dark blocks, sparse lit windows, faint street lights
+    const bgc = s.exterior === 'clouds' ? '#0c0a14' : '#0b1018';
+    rect(g, X, Y, TILE, TILE, bgc);
+    const bx = Math.floor((x + (Math.floor(y / 5) & 1) * 2) / 4), by = Math.floor(y / 5);
     const r = h2(bx, by, 7);
-    const inBlock = (x % 3) !== 0 && (y % 3) !== 0;
-    if (inBlock && (r & 3) !== 0) {
-      const roof = ['#141c28', '#18202e', '#121822', '#1c2230'][r & 3];
+    const lx = (x + (Math.floor(y / 5) & 1) * 2) % 4, ly = y % 5;
+    const inBlock = lx !== 0 && ly !== 0 && (r & 7) !== 0;
+    if (inBlock) {
+      const roof = mixHex(bgc, ['#1a2232', '#161e2c', '#1c2434', '#141a26'][r & 3], 0.7);
       rect(g, X, Y, TILE, TILE, roof);
-      if ((x % 3) === 1) rect(g, X, Y, 1, TILE, shade(roof, 0.1));
-      if ((y % 3) === 1) rect(g, X, Y, TILE, 1, shade(roof, 0.12));
-      for (let i = 0; i < 3; i++) { const q = h2(x, y, 20 + i); if ((q & 7) === 0) px(g, X + (q >>> 8) % 16, Y + (q >>> 16) % 16, (q & 64) ? '#e8c070' : '#a8c8e8'); }
-    } else if (!inBlock) {
-      if ((h2(x, y, 9) & 15) === 0) { px(g, X + 8, Y + 8, '#f0d890'); g.fillStyle = 'rgba(240,216,144,0.15)'; g.fillRect(X + 6, Y + 6, 5, 5); }
-    }
+      if (lx === 1) rect(g, X, Y, 1, TILE, shade(roof, 0.12));
+      if (ly === 1) rect(g, X, Y, TILE, 1, shade(roof, 0.15));
+      const q = h2(x, y, 21);
+      if ((q & 15) === 0) px(g, X + (q >>> 8) % 16, Y + (q >>> 16) % 16, (q & 64) ? '#c8a060' : '#7890a8');
+    } else if ((h2(x, y, 9) & 31) === 0) { px(g, X + 8, Y + 8, '#d8c080'); }
     if (s.exterior === 'clouds') {
-      const c = h2(Math.floor(x / 5), Math.floor(y / 4), 13);
-      if ((c & 3) === 0) { g.fillStyle = 'rgba(200,190,220,0.10)'; g.fillRect(X, Y + 4, TILE, 8); g.fillStyle = 'rgba(220,210,240,0.08)'; g.fillRect(X + 2, Y + 6, TILE - 4, 4); }
+      const c = h2(Math.floor(x / 6), Math.floor(y / 3), 13);
+      if ((c & 7) === 0) { g.fillStyle = 'rgba(190,180,215,0.06)'; g.fillRect(X, Y + 3 + (c >> 8) % 4, TILE, 6); }
     }
   }
   // building facade / drop shadow right below and right of the building
@@ -513,7 +514,22 @@ function drawTile(g: Ctx, m: FloorMap, s: Skin, x: number, y: number, dist: Int1
   switch (t) {
     case T.VOID: drawVoid(g, m, s, x, y, dist); return;
     case T.FLOOR: drawFloor(g, m, s, x, y, matAt(m, x, y)); floorShadows(g, m, x, y); return;
-    case T.CORE_FLOOR: drawFloor(g, m, s, x, y, matAt(m, x, y) === MAT.ACCENT ? MAT.ACCENT : MAT.CORE); floorShadows(g, m, x, y); return;
+    case T.CORE_FLOOR: {
+      drawFloor(g, m, s, x, y, MAT.CORE);
+      if (matAt(m, x, y) === MAT.ACCENT) {
+        // lobby inlay band (brass / brand inlay set into the stone)
+        const X = x * TILE, Y = y * TILE;
+        const a = (dx: number, dy: number) => ti(m, x + dx, y + dy) === T.CORE_FLOOR && matAt(m, x + dx, y + dy) === MAT.ACCENT;
+        const hz = a(-1, 0) || a(1, 0), vt = a(0, -1) || a(0, 1);
+        g.fillStyle = s.coreInlay;
+        if (hz) { g.fillRect(X, Y + 5, TILE, 1); g.fillRect(X, Y + 10, TILE, 1); }
+        if (vt) { g.fillRect(X + 5, Y, 1, TILE); g.fillRect(X + 10, Y, 1, TILE); }
+        if (hz && vt) { g.fillRect(X + 6, Y + 6, 4, 4); }
+        g.fillStyle = 'rgba(255,255,255,0.12)';
+        if (hz) g.fillRect(X, Y + 6, TILE, 4); else if (vt) g.fillRect(X + 6, Y, 4, TILE);
+      }
+      floorShadows(g, m, x, y); return;
+    }
     case T.DOOR: drawDoorFloor(g, m, s, x, y); return;
     case T.RUBBLE: drawRubble(g, m, s, x, y); floorShadows(g, m, x, y); return;
     case T.WATER: drawWater(g, m, s, x, y); floorShadows(g, m, x, y); return;

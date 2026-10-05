@@ -49,6 +49,9 @@ export class Layer extends Entity {
   constructor(layer: 0 | 1 | 2, public draw: (g: Ctx) => void, public tick?: (dt: number) => void, public sortAt?: () => number) {
     super();
     this.layer = layer; this.persist = true;
+    // World.render culls entities by position: a layer always sits at the camera so it is never culled
+    Object.defineProperty(this, 'x', { get: () => app.renderer.camX, set: () => {}, configurable: true });
+    Object.defineProperty(this, 'y', { get: () => app.renderer.camY, set: () => {}, configurable: true });
   }
   update(dt: number): void { this.tick?.(dt); }
   render(g: Ctx): void { this.draw(g); }

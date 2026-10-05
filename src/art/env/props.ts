@@ -243,7 +243,7 @@ function microwaveArt(p: PP): Art {
 function kettleArt(p: PP): Art {
   return counterUnit(p, (g, ty) => {
     const col = p.s.act === 4 ? '#d4a537' : p.s.act === 2 ? p.s.brand : '#e8e8e8';
-    rect(g, 4, ty - 6, 6, 7, col); rect(g, 4, ty - 6, 6, 1, shade(col, 0.3)); rect(g, 10, ty - 4, 2, 3, shade(col, -0.2)); rect(g, 3, ty - 4, 1, 2, shade(col, -0.2));
+    rect(g, 3, ty - 7, 7, 8, col); rect(g, 3, ty - 7, 7, 1, shade(col, 0.3)); rect(g, 3, ty - 2, 7, 1, shade(col, -0.35)); px(g, 5, ty - 5, '#40a0e0'); rect(g, 10, ty - 4, 2, 3, shade(col, -0.2)); rect(g, 3, ty - 4, 1, 2, shade(col, -0.2));
     rect(g, 11, ty - 1, 4, 3, '#a85030'); // mugs
     if (p.st === 'damaged' || p.st === 'destroyed') { rect(g, 4, ty - 2, 6, 3, col); g.fillStyle = 'rgba(160,200,230,0.6)'; g.fillRect(2, ty + 2, 10, 3); }
   }, 8);
@@ -509,7 +509,7 @@ function wallArt(p: PP): Art {
       if (broken) { cracks(g, 1, 1, W - 2, 10, v + 2, '#5a6a74', 4); }
     }) };
     case 'banner_values': {
-      const words = ['ALIGN', 'OBEY', 'THRIVE', 'SYNERGY', 'LOYALTY', 'ASCEND', 'ONE TEAM', 'DELIVER'];
+      const words = ['ALIGN', 'OBEY', 'THRIVE', 'LOYAL', 'ASCEND', 'UNITY', 'COMPLY', 'SMILE'];
       const word = words[v % words.length];
       const H = 30;
       return { lift: -10, c: mk(W, H, (g) => {
@@ -899,7 +899,10 @@ function propArt(p: PP): Art {
     }, 'rgba(120,124,132,0.4)') };
     case 'mail_trolley': return boxyArt(p, '#5a5e66', 10, (g, W, H) => { rect(g, 1, -0, W - 2, 6, '#8a8a7a'); rect(g, 2, 1, W - 4, 4, '#b8b4a0'); rect(g, 1, H - 2, 2, 2, '#1a1a1a'); rect(g, W - 3, H - 2, 2, 2, '#1a1a1a'); rect(g, 3, 2, 4, 3, s.paper); });
     case 'sack_pile': {
-      if (st === 'destroyed') return wreck(30, ['#8a8a7a', '#6a6a5a', s.paper], v, 6);
+      if (st === 'destroyed') return wreck(p.W, ['#8a8a7a', '#6a6a5a', s.paper], v, 6);
+      if (p.D > p.W) return { shadow: [7, 6], c: mk(16, 30, (g) => {
+        for (let i = 0; i < 4; i++) { const y = 3 + i * 7; ellipse(g, 8, y + 4, 6, 4, i & 1 ? '#8a8a7a' : '#9a9a88'); rect(g, 5, y + 1, 5, 1, '#b8b8a4'); rect(g, 8, y, 1, 2, '#5a5a4a'); }
+      }) };
       return { shadow: [15, 3], c: mk(30, 14, (g) => {
         for (let i = 0; i < 5; i++) { const x = 1 + i * 6 - (i > 2 ? 14 : 0), y = i > 2 ? 0 : 5; ellipse(g, x + 4, y + 4, 5, 4, i & 1 ? '#8a8a7a' : '#9a9a88'); rect(g, x + 2, y + 1, 4, 1, '#b8b8a4'); rect(g, x + 4, y, 1, 2, '#5a5a4a'); }
       }) };
@@ -1046,7 +1049,7 @@ function propArt(p: PP): Art {
         rect(g, 3, 6, 16, 6, '#2a2440'); ellipse(g, 11, 9, 5, 2, (fr & 1) ? '#40e0d0' : '#30b0a8'); px(g, 11, 9, '#ffffff');
         rect(g, 21, 6, 7, 6, '#3a3048'); px(g, 23, 8, '#40e0d0'); px(g, 25, 8, '#d4a537');
         rect(g, 0, 14, 30, 16, '#d0ccc0'); rect(g, 0, 14, 30, 1, '#e8e4d8');
-        rect(g, 4, 17, 22, 4, '#5a4a6a'); miniText(g, 'FORTUNE', 15, 17, '#f2d27a', true);
+        rect(g, 4, 17, 22, 4, '#5a4a6a'); miniText(g, 'FATE', 15, 17, '#f2d27a', true);
         rect(g, 6, 0, 18, 5, '#f8f4e0'); rect(g, 8, 1, 14, 1, '#40e0d0'); rect(g, 8, 3, 10, 1, '#9a9890');
         rect(g, 0, 29, 30, 1, '#7a766a');
         g.fillStyle = 'rgba(64,224,208,0.18)'; g.fillRect(2, 0, 26, 6);

@@ -120,7 +120,7 @@ export function buildExitSprite(kind: ExitKind, available: boolean, open: boolea
   let sp = cache.get(key);
   if (sp) return sp;
   const dw = kind === 'lift' ? 48 : 32;
-  const W = dw + (kind === 'lift' ? 14 : 8), H = 46;
+  const W = dw + (kind === 'lift' ? 14 : 8), H = 50;
   const base = H - 8; // doorway bottom row
   const x0 = (W - dw) >> 1;
   const body = paint(W, H, (g) => {

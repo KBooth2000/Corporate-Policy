@@ -23,7 +23,7 @@ export { animPose, TIMING, CARRY_HAND } from './poses';
 export type { Pose, PoseCtx, V3, Expr } from './poses';
 export { resolveDress, rollLayers, withAct, kitFor, LOOK_VERSION } from './look';
 export { KITS, ROLE_KITS, STAFF_KIT, HEADS, HAIR_WEIGHTS } from './kits';
-export { bakeImpl as bakeCharacterEx, setCharacterShadows, lastBakeStats, makePortrait, portraitLarge, CELL_W, CELL_H, CELL_OX, CELL_OY } from './bake';
+export { bakeImpl as bakeCharacterEx, prewarmImpl, bakeAllAnims, setCharacterShadows, lastBakeStats, bakeTimings, INITIAL_ANIMS, PREWARM_ORDER, makePortrait, portraitLarge, CELL_W, CELL_H, CELL_OX, CELL_OY } from './bake';
 export type { BakedCharacterEx, BakeStats } from './bake';
 export type * from './types';
 

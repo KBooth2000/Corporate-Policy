@@ -113,7 +113,7 @@ export class RadioPanel extends PanelScene {
 
   protected layout(cl: RectL): void {
     const foot = this.footH();
-    const lcdH = 62;
+    const lcdH = 76;
     this.lcd = { x: cl.x + 2, y: cl.y + 2, w: cl.w - 4, h: lcdH };
     const ctlH = btnH() + 4;
     const ly = cl.y + lcdH + 8;
@@ -131,12 +131,12 @@ export class RadioPanel extends PanelScene {
     well(g, l.x + 5, l.y + 5, l.w - 10, l.h - 10, '#10261d');
     const on = radio.on;
     const t = RADIO_TRACKS[profile().radio.track];
-    drawText(g, on ? '98.4 KORP-FM' : 'RADIO OFF', l.x + 12, l.y + 10, { color: on ? '#7fff9c' : '#3c6a4c', scale: 2, shadow: null });
-    drawText(g, on ? 'THE CULTURE FREQUENCY' : 'PRESS ON', l.x + 12, l.y + 28, { color: on ? '#4fc878' : '#2c5a3c', shadow: null });
+    drawText(g, on ? '98.4 KORP-FM' : 'RADIO OFF', l.x + 12, l.y + 9, { color: on ? '#7fff9c' : '#3c6a4c', scale: 2, shadow: null });
+    drawText(g, on ? 'THE CULTURE FREQUENCY' : 'PRESS RADIO ON', l.x + 12, l.y + 27, { color: on ? '#4fc878' : '#2c5a3c', shadow: null });
     // track title
-    if (t) ink(g, truncate(on ? t.title : '(not playing)', l.w - 220, s), l.x + 12, l.y + l.h - 17, { scale: s, color: on ? '#ffd34d' : '#6a7a5a', shadow: null });
+    if (t) ink(g, truncate(on ? t.title : '(not playing)', l.w - 220, s), l.x + 12, l.y + 40, { scale: s, color: on ? '#ffd34d' : '#6a7a5a', shadow: null });
     // equaliser
-    const bx = l.x + l.w - 12 - this.bars.length * 7, by = l.y + l.h - 10;
+    const bx = l.x + l.w - 12 - this.bars.length * 7, by = l.y + l.h - 12;
     for (let i = 0; i < this.bars.length; i++) {
       const hh = Math.round(this.bars[i] * 36);
       for (let k = 0; k < hh; k += 3) { g.fillStyle = k > 26 ? '#ff6a5a' : k > 16 ? '#ffd34d' : '#4fc878'; g.fillRect(bx + i * 7, by - k - 2, 5, 2); }
@@ -144,10 +144,10 @@ export class RadioPanel extends PanelScene {
     // DJ ticker
     const tk = 'DJ: ' + this.dj + '      ';
     const tw = measure(tk);
-    g.save(); g.beginPath(); g.rect(l.x + 7, l.y + 41, l.w - 150, 11); g.clip();
+    g.save(); g.beginPath(); g.rect(l.x + 7, l.y + 58, l.w - 150, 11); g.clip();
     const off = tw > l.w - 160 ? Math.floor(this.djScroll % tw) : 0;
-    drawText(g, tk, l.x + 12 - off, l.y + 43, { color: '#9fe0b4', shadow: null });
-    if (off) drawText(g, tk, l.x + 12 - off + tw, l.y + 43, { color: '#9fe0b4', shadow: null });
+    drawText(g, tk, l.x + 12 - off, l.y + 60, { color: '#9fe0b4', shadow: null });
+    if (off) drawText(g, tk, l.x + 12 - off + tw, l.y + 60, { color: '#9fe0b4', shadow: null });
     g.restore();
     box(g, this.list.x - 1, this.list.y - 1, this.list.w + 2, this.list.h + 2, { face: '#e1ddd0', kind: 'sunken', cham: 0, depth: 1 });
     void LINE_H; void Ui;

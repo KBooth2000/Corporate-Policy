@@ -17,6 +17,8 @@ import { fmtTime } from '../util';
 import { InfoRow } from './rows';
 import { PanelScene } from './panel';
 
+const B = (b: Button): Button => { b.h = btnH() + 2; return b; };
+
 /** Lets the hub fade out before the run begins; defaults to immediate. */
 export type LaunchFn = (go: () => void) => void;
 const now: LaunchFn = (go) => go();
@@ -56,7 +58,7 @@ export class DailyPanel extends PanelScene {
       sub: scored ? 'Quitting is fine: a suspended shift still counts as your attempt. Dying ends it.' : assist ? 'Runs with Workplace Adjustments are excluded from the daily boards.' : 'Practice attempts are never scored. Enjoy yourself.', valueCol: scored ? '#1d7a3e' : C.inkDim,
     }));
     if (assist && d.scoredAvailable) items.push(new Label('Switch Workplace Adjustments off in the car (Clock In) to use your scored attempt.', { dim: true }));
-    const b = new Button({ text: scored ? 'Start scored daily run' : 'Start practice run', kind: 'primary', glyph: 'play', onPress: () => this.start(), sound: 'ui_select' });
+    const b = B(new Button({ text: scored ? 'Start scored daily run' : 'Start practice run', kind: 'primary', glyph: 'play', onPress: () => this.start(), sound: 'ui_select' }));
     items.push(new Spacer(2), b);
     items.push(new Heading('Local board (today)', 'chart'));
     if (!this.board) items.push(new Label('Loading...', { dim: true }));
@@ -104,18 +106,21 @@ export class ClockInPanel extends PanelScene {
     const sus = peekSuspend();
     if (sus) {
       const lbl = `Continue shift: floor ${sus.plan.floor_number}, ${ROLES[sus.role]?.name ?? sus.role}${sus.daily ? ', daily' : sus.seeded ? ', seeded' : ''}`;
-      items.push(new Button({ text: lbl, kind: 'primary', glyph: 'play', onPress: () => this.launch(() => { continueShift(); }), sound: 'ui_select' }));
+      items.push(B(new Button({ text: lbl, kind: 'primary', glyph: 'play', onPress: () => this.launch(() => { continueShift(); }), sound: 'ui_select' })));
       items.push(new Label(`Suspended at ${fmtTime(sus.elapsed)} on the clock. Seed ${sus.seedCode}. Resuming deletes the save.`, { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
     }
-    const newBtn = new Button({ text: `New run as ${role.name}`, kind: sus ? 'normal' : 'primary', glyph: 'play', onPress: () => this.newRun(), sound: 'ui_select' });
+    const newBtn = B(new Button({ text: `New run as ${role.name}`, kind: sus ? 'normal' : 'primary', glyph: 'play', onPress: () => this.newRun(), sound: 'ui_select' }));
     items.push(newBtn);
     items.push(new Label(`Starting role: ${role.name}. Change role and loadout in the car boot.${Object.keys(this.mods()).length ? ' Performance Review modifiers apply.' : ''}`, { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
 
     // daily
     const d = dailyInfo();
     items.push(new Heading('Daily run', 'calendar'));
-    items.push(new Button({ text: d.scoredAvailable && !app.settings.assist.enabled ? `Daily run ${d.key}: scored attempt` : `Daily run ${d.key}: practice`, glyph: 'calendar', onPress: () => this.openDaily(), sound: 'ui_select' }));
+    items.push(B(new Button({ text: d.scoredAvailable && !app.settings.assist.enabled ? `Daily run ${d.key}: scored attempt` : `Daily run ${d.key}: practice`, glyph: 'calendar', onPress: () => this.openDaily(), sound: 'ui_select' })));
     items.push(new Label('One scored attempt per day (00:00 UTC reset), a fixed published modifier set and no Promotion.', { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
 
     // seed
     items.push(new Heading('Enter seed', 'hash'));
@@ -123,19 +128,22 @@ export class ClockInPanel extends PanelScene {
     const tf = new TextField('Seed code', '', { maxLen: 9, placeholder: 'XXXX-XXXX', format: fmt, filter: (ch) => (/[0-9a-z]/i.test(ch) ? ch.toUpperCase() : ''), onSubmit: () => undefined });
     attachOSK(this.ui, tf, 'Enter seed code', 8);
     items.push(tf);
-    items.push(new Button({ text: 'Start seeded run', glyph: 'hash', onPress: () => this.seeded(tf), sound: 'ui_select' }));
+    items.push(B(new Button({ text: 'Start seeded run', glyph: 'hash', onPress: () => this.seeded(tf), sound: 'ui_select' })));
     items.push(new Label('Seeded runs share a layout and loot with whoever has the same code. Promotion is disabled.', { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
 
     // performance review
     items.push(new Heading('Performance Review', 'chart'));
     if (!p.prUnlocked) {
       items.push(new Label('Locked. Defeat the CEO once to unlock difficulty modifiers. Each rank earns KPI points toward cosmetic rewards: outfits, titles and hub decor. Never power.', { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
     } else {
       for (const m of MODIFIERS) {
         if (m.id === 'promotion_season' && PROMOTION_MODE !== 'full') continue;
         const opts = [{ value: 0, label: 'Off' }, ...Array.from({ length: m.ranks }, (_, i) => ({ value: i + 1, label: `Rank ${'I'.repeat(i + 1)}  (+${(i + 1) * m.kpiPerRank} KPI)` }))];
         items.push(new Choice<number>(m.name, opts, () => Math.min(m.ranks, p.prModifiers[m.id] ?? 0), (v) => { if (v) p.prModifiers[m.id] = v; else delete p.prModifiers[m.id]; saveProfile(); this.refreshKpi(); }));
         items.push(new Label(m.desc, { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
       }
       items.push(this.kpiLabel);
       this.refreshKpi();
@@ -150,6 +158,7 @@ export class ClockInPanel extends PanelScene {
     dmg.enabled = spd.enabled = S.assist.enabled;
     items.push(en, dmg, spd);
     items.push(new Label('Assist runs are excluded from the daily leaderboards and marked on your stats screen. Everything else works as normal, and you still earn Annual Leave.', { dim: true, scale: 1 }));
+    items.push(new Spacer(3));
 
     const f = this.ui.focus;
     const fi = f ? this.list.items.indexOf(f) : -1;
