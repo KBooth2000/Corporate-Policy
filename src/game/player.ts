@@ -815,7 +815,6 @@ export class Player extends Actor {
   // ------------------------------------------------------------------ render
   render(g: Ctx): void {
     const b = this.baked!;
-    this.drawShadow(g, b.shadowW);
     const hand = b.hand(this.anim, this.dir, this.animT);
     const wpn = this.grabbing ? null : (this.run.loadout.melee?.id ?? null);
     const sw = this.swing;

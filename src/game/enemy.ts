@@ -8,6 +8,7 @@ import type { ArchetypeId, Tier, Act } from '../data/ids';
 import { TIER_NAMES } from '../data/ids';
 import { ARCHETYPE_DEFS, ArchetypeDef, ACTS } from '../data/tables';
 import { bakeCharacter, rollLook, CharacterLook, AnimName } from '../art/characters';
+import { withAct } from '../art/chars';
 import { weaponSprite } from '../art/items';
 import { drawSpriteRot } from '../render/canvas';
 import { Shape, queryActors } from './combat';
@@ -155,8 +156,8 @@ export class Enemy extends Actor {
     this.cashDrop = Math.max(1, Math.round(this.arch.cost * 2.2 * (1 + o.tier * 0.4)));
     this.barkCd = o.rng.range(2, 8);
     this.voiceSeed = o.rng.nextU32();
-    this.look = o.look ?? rollLook({ kind: 'enemy', archetype: o.archetype, tier: o.tier }, o.rng.fork('look'));
-    (this.look as any).act = o.act;
+    // indoctrination escalates with the floor's act (spec 1.3): Act 4 gets ceremonial lanyards
+    this.look = o.look ?? withAct(rollLook({ kind: 'enemy', archetype: o.archetype, tier: o.tier }, o.rng.fork('look')), Math.max(o.act, ARCHETYPE_DEFS[o.archetype].act) as Act);
     this.baked = bakeCharacter(this.look);
     this.height = this.baked.height;
     const id = o.name ? { name: o.name, title: o.title ?? '' } : generateIdentity(o.rng, o.tier);
@@ -531,7 +532,6 @@ export class Enemy extends Actor {
   // ------------------------------------------------------------------ render
   render(g: Ctx): void {
     const b = this.baked!;
-    if (!this.corpse) this.drawShadow(g, b.shadowW);
     this.behaviour.render?.(this, g, true);
     const lift = this.thrown ? 8 : this.grabbedBy ? 4 : 0;
     const anim = this.corpse ? this.deathAnim : this.anim;
