@@ -26,7 +26,7 @@ import { rect } from '../render/canvas';
 import { THEME_NAMES } from '../data/ids';
 import type { ExitKind, RewardKind } from '../data/ids';
 import { touch } from '../ui/touch';
-import { renderNotifications, updateNotifications, notify } from '../ui/corpos';
+import { renderNotifications, updateNotifications, notify, notifyConfig } from '../ui/corpos';
 import { TransitionScene } from './transition';
 import { PauseScene } from './pause';
 import { ARCHETYPE_DEFS } from '../data/tables';
@@ -78,12 +78,14 @@ export class GameplayScene implements Scene {
       this.startFloor();
     }
     touch.setContext({ mode: 'gameplay' } as any);
+    notifyConfig.topOffset = 96; // clear the top-right lift panel + minimap
     window.addEventListener('cp-back', this.onBack);
   }
 
   exit(): void {
     this.offBg();
     window.removeEventListener('cp-back', this.onBack);
+    notifyConfig.topOffset = 0;
     touch.setContext({ mode: 'menu' } as any);
     audio.music.setCombat(false);
     audio.music.setRage(false);

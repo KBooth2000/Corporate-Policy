@@ -3,6 +3,7 @@ import { Renderer } from '../render/renderer';
 import { Input } from './input';
 import { Settings, defaultSettings } from './settings';
 import { loadVersioned, saveVersioned } from './storage';
+import { audio } from '../audio/audio';
 
 export interface Scene {
   /** Called when pushed/made active. */
@@ -65,6 +66,18 @@ class App {
     if (s.bindings) this.input.bindings = structuredClone(s.bindings);
     if (s.moveKeys) this.input.moveKeys = { ...s.moveKeys };
     this.input.rumbleEnabled = s.rumble;
+    audio.setVolumes(s.volMaster, s.volMusic, s.volSfx, s.volVoice);
+    this.applyFullscreen();
+  }
+
+  applyFullscreen(): void {
+    const on = this.settings.fullscreen;
+    if (window.cpNative?.setFullscreen) { window.cpNative.setFullscreen(on); return; }
+    if (isCapacitor) return; // Android is always immersive fullscreen
+    try {
+      if (on && !document.fullscreenElement && (navigator as any).userActivation?.isActive) document.documentElement.requestFullscreen?.().catch(() => undefined);
+      else if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined);
+    } catch { /* needs a user gesture on web */ }
   }
 
   saveSettings(): void {

@@ -84,6 +84,7 @@ export class Input {
       if (e.code === 'F11' || e.code === 'F12' || (e.ctrlKey && e.code === 'KeyR')) return;
       e.preventDefault();
       if (this.capture && this.captureKind === 'kb') {
+        if (e.repeat) return;
         if (e.code !== 'Escape') { const cb = this.capture; this.capture = null; cb('key:' + e.code); }
         else { const cb = this.capture; this.capture = null; cb(''); }
         return;
@@ -237,6 +238,8 @@ export class Input {
   /** Begin capturing the next input for rebinding. Callback receives '' on cancel. */
   captureNext(kind: 'kb' | 'pad', cb: (binding: string) => void): void { this.capture = cb; this.captureKind = kind; }
   get capturing(): boolean { return this.capture !== null; }
+  /** Cancel an in-progress rebind capture (callback receives ''). */
+  cancelCapture(): void { const cb = this.capture; this.capture = null; cb?.(''); }
 
   setBinding(a: Action, kind: 'kb' | 'pad', binding: string, slot = 0): void {
     const list = this.bindings[a][kind];
