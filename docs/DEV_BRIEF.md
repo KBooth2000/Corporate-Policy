@@ -47,3 +47,36 @@ tools/         shot.mjs (headless screenshot), soak test, asset export
 - `Scene` interface: `{ enter?, exit?, resume?, update(dt), render(), transparent? }`. Fixed step: `dt = 1/60`.
 - Font: `drawText(g, text, x, y, { color, scale, align, shadow, outline })`, `measure(text, scale)`, `wrap()`, `drawWrapped()`. Glyph height 9 (cap height 7), line height 10.
 - Canvas helpers: `paint(w, h, g => ...)`, `withOutline(canvas, col)`, `silhouette`, `shade(hex, amt)`, `mixHex`, `ellipse`, `line`, `rect`, `px`, `Sprite`, `drawSprite`, `drawSpriteRot`.
+
+## Gameplay architecture (wave 2 reference)
+- `src/scenes/gameplay.ts` — **GameplayScene** (the run). It builds each floor with `startFloor()`, then wires up the world hooks, spawns, rewards, exits, transitions, death and victory. Fields content modules use: `s.run` (RunState), `s.plan` (FloorPlan), `s.world`, `s.player`, `s.hud`, `s.spawn` (SpawnContext), `s.floorRng.{combat,loot,spawns,cosmetic,events}`, `s.data` (per-floor scratch), `s.victory()`, `s.continueTo()`, `s.lastClearedAt`.
+- `src/game/registry.ts` — **extension points**. Register from your module file:
+  - `FLOOR_SETUP[floorType]` and `BOSS_FLOORS[act]`
+  - `REWARD_GRANT[rewardKind]`
+  - `FLOOR_HOOKS`, `RUN_START_HOOKS`, `RUN_END_HOOKS`
+  - `SCENES.hub/summary/ending/intro/mainMenu`
+
+  Modules in `src/game/content/*.ts`, `src/game/enemies/*.ts`, `src/game/bosses/*.ts` and `src/game/hazards/*.ts` are **auto-imported** by `src/game/autoload.ts`. Just create the file and it self-registers.
+- `src/game/world.ts` — **World**:
+  - Tiles and doors (`isSolidTile`, `doorAtTile`, `setRoomDoors`).
+  - Rooms (`rooms[]` RoomState with locked/cleared/entered/enemies/mergedWith; room-lock automatic).
+  - Props runtime `PropRT` (hp/state/data/used) with `registerProp(kind, behaviour)` for hazards, plus `hitProp`, `setPropState`, `propsNear`, `findExecutionTarget`.
+  - `breach()`, `smashWindow()`, `moveActor()`, `raycast()`, `los()`, flow-field `flowDir()`.
+  - `telegraph(owner, shape, windup, onFire)`, `damage(target, info)`.
+  - `particles`, `decals.splat()`, `floatText()`, `say(actor, speaker, text)` for subtitled barks, `bus` (GameBus events: kill, hit, playerHit, dash, roomClear, floorClear, execution, breach, rageStart, ...).
+  - `cutscene` (pauses the simulation), `interactables[]`, `holdClear`, `forcedDarkness`, `emergencyLights`, `tint`, `hitstop`.
+- `src/game/entity.ts` — Actor (hp, shield, status effects, stagger, grabbedBy, thrown, invuln, anim). `src/game/combat.ts` — Telegraph, `damage()`, `queryActors(world, shape, team)`, `Shape` (circle/arc/line/ring).
+- `src/game/player.ts` — Player:
+  - `stats` (PlayerStats from `src/game/stats.ts`, recomputed by `refreshStats()` from `run` and `STAT_MOD_PROVIDERS` in run.ts).
+  - `outgoingMods`, `incomingMods`, `deathSavers`, `autoDodge`, `nextHitCrit`, `addRage()`, `activateRage()`, `heal()`, `equip()`, `dealHit()`, `bannedVerbs` + `onPolicyBreach` (Compliance boss).
+- `src/game/enemy.ts` — **Enemy** base:
+  - Archetype stats, tiers, quirks, identity, `rng`, `flags`.
+  - Helpers: `chase/retreat/strafe/steer/stop`, `meleeAttack/rangedAttack/areaAttack` (all telegraphed with act minimums), `bark(ctx)`, `windup()`, `dmg()`.
+  - `registerBehaviour(archetypeId, {init, think, onHurt, onDeath, onAllyDeath, render, weapon, modifyIncoming})`. `DEFAULT_MELEE` / `DEFAULT_RANGED` are the fallbacks.
+- `src/game/spawner.ts` — budget spending (`populateFloor`, `composeRoom`, `placeRoster`, `makeEnemy`, reinforcement queues).
+- `src/game/executions.ts` — `registerExecution(type, {play(w, player, victim, target, full, done) → Cutscene})`. The generic fallback lives there.
+- `src/game/pickups.ts` (Pickup: weapon/cash/heal/ammo/espresso/reward/intel/leave, `dropCash`), `src/game/projectile.ts`, `src/game/weapons.ts`, `src/game/run.ts` (RunState, FloorPlan, `planFloor`, `rollExits`, `runStats`, `STAT_MOD_PROVIDERS`, `logEvent`), `src/game/profile.ts` (persistent Profile, `saveProfile()`, `hasUnlock()`, `feat()`), `src/game/content-info.ts` (`registerBenefits`, `BENEFIT_INFO`).
+- UI: `src/ui/hud.ts` (Hud: `showBanner`, `bossBar`, `policy`), `src/ui/corpos.ts` (CorpOS components: `notify()`, EmailView, IntranetPage, SlideDeck, MemoCard, ConfirmDialog, UiScene), `src/ui/touch.ts`.
+- Quick-play for testing: `#play&seed=1234&floor=7&type=elite&role=temp`. Screenshot with `node tools/shot.mjs scratch/x.png "play&seed=5&floor=3" 3000 "<js>"`. In the page, `window.__cp.app` gives access to `app.top` (the GameplayScene) for scripted tests. For example, `__cp.app.top.player.hp`, or teleport the player and spawn enemies.
+- **Unlock id convention** (profile.unlocks): `benefit:<id>`, `desk:<id>`, `weapon:<id>`, `event:<id>`, `role:<id>`, `radio:<index>`, `cosmetic:<id>`. Starter content needs no unlock. Pools must exclude locked content.
+- **Feature flag:** `src/game/flags.ts` holds `PROMOTION_MODE: 'light' | 'full'` (spec 5.6 legal gate). It ships as 'light'.

@@ -115,6 +115,8 @@ export class World {
   activeRooms = new Set<number>();
   cutscene: Cutscene | null = null;
   floorCleared = false;
+  /** Bosses/scripted floors hold the clear until they finish. */
+  holdClear = false;
   inCombat = false;
   /** Alarm floor: doors open, everyone hunts (spec 4.1). */
   alarm: boolean;
@@ -366,6 +368,9 @@ export class World {
     if (r) r.enemies.add(a);
   }
 
+  /** Pending reinforcements per room (set by the spawner). */
+  pendingFor: (roomId: number) => number = () => 0;
+
   liveEnemies(roomId: number): number {
     const r = this.rooms[roomId];
     if (!r) return 0;
@@ -400,7 +405,7 @@ export class World {
       const inside = p.x > rr.x + 10 && p.x < rr.x + rr.w - 10 && p.y > rr.y + 12 && p.y < rr.y + rr.h - 6;
       if (inside) {
         cur.entered = true;
-        if (this.liveEnemies(this.currentRoom) > 0 && !this.alarm) {
+        if (this.liveEnemies(this.currentRoom) + this.pendingFor(this.currentRoom) > 0 && !this.alarm) {
           cur.locked = true;
           this.setRoomDoors(this.currentRoom, 'locked');
           for (const e of cur.enemies) (e as any).aware = true;
@@ -420,7 +425,7 @@ export class World {
       if (r.cleared) continue;
       const id = r.def.id;
       const partner = r.mergedWith;
-      const live = this.liveEnemies(id) + (partner >= 0 ? this.liveEnemies(partner) : 0);
+      const live = this.liveEnemies(id) + this.pendingFor(id) + (partner >= 0 ? this.liveEnemies(partner) + this.pendingFor(partner) : 0);
       if ((r.locked || (this.alarm && r.entered) || (r.entered && !r.locked)) && live === 0) {
         r.cleared = true;
         if (r.locked) { r.locked = false; this.setRoomDoors(id, 'open'); audio.sfx('door_unlock'); }
@@ -439,7 +444,7 @@ export class World {
     const anyLocked = this.rooms.some((r) => r.locked);
     this.inCombat = anyLocked || (this.alarm && this.totalLiveEnemies() > 0);
 
-    if (!this.floorCleared && this.totalLiveEnemies() === 0 && this.rooms.every((r) => r.cleared || this.liveEnemies(r.def.id) === 0)) {
+    if (!this.floorCleared && !this.holdClear && this.totalLiveEnemies() === 0 && this.rooms.every((r) => r.cleared || (this.liveEnemies(r.def.id) + this.pendingFor(r.def.id)) === 0)) {
       this.floorCleared = true;
       for (const r of this.rooms) { r.cleared = true; r.locked = false; }
       for (const d of this.doors) d.state = 'open';
