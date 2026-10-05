@@ -1,7 +1,7 @@
 // Offline QA renders (used by the 'audio' dev scene and tools/audio-check.mjs): renders music, SFX, loops and
 // voices through the real mix chain in an OfflineAudioContext and measures them.
 import type { MusicTrack, SfxName, LoopName, VoiceKind } from './audio';
-import { buildMix } from './mixer';
+import { buildMix, attachLimiter } from './mixer';
 import { Player } from './sequencer';
 import { TRACKS } from './tracks/index';
 import { SFX, LOOPS } from './sfxdefs';
@@ -14,6 +14,7 @@ export interface Stats {
 }
 
 const SR = 44100;
+async function mixed(ctx: OfflineAudioContext) { const m = buildMix(ctx, ctx.destination); await attachLimiter(ctx, m); return m; }
 const db = (x: number) => (x > 1e-9 ? 20 * Math.log10(x) : -200);
 
 /** Self-test: a sine with an injected step must register exactly one click; a clean sine none. */
@@ -79,7 +80,7 @@ export async function renderMusic(track: MusicTrack, o: MusicRenderOpts = {}): P
   const secs = o.seconds ?? 20;
   const ctx = new OAC(2, Math.ceil(secs * SR), SR);
   const def = TRACKS[track]!;
-  const dest = o.raw ? ctx.destination : buildMix(ctx, ctx.destination).musicIn;
+  const dest = o.raw ? ctx.destination : (await mixed(ctx)).musicIn;
   const p = new Player(ctx, dest, def, o.only ? (_d, i) => o.only!.includes(i) : undefined);
   p.realtime = false;
   p.want = { combat: !!o.combat, rage: false, phase: o.phase ?? 1 };
@@ -102,7 +103,7 @@ export async function renderSfxPlayed(name: SfxName, variant = 0): Promise<{ pla
   const raw = (await renderSfxDef(def, seed, null))!;
   const OAC = offlineCtor()!;
   const ctx = new OAC(2, Math.ceil((raw.duration + 0.3) * SR), SR);
-  const mix = buildMix(ctx, ctx.destination);
+  const mix = await mixed(ctx);
   const src = ctx.createBufferSource();
   src.buffer = raw;
   src.connect(gain(ctx, dbToGain(def.lvl ?? -6), mix.sfxIn));
@@ -113,11 +114,17 @@ export async function renderSfxPlayed(name: SfxName, variant = 0): Promise<{ pla
 export async function renderLoopPlayed(name: LoopName): Promise<{ played: AudioBuffer; raw: AudioBuffer; wrapJump: number }> {
   const def = LOOPS[name];
   const raw = (await renderLoopDef(def, 99, null))!;
+  // wrap discontinuity relative to the loop's typical sample-to-sample step (1 = perfectly natural)
   let wrap = 0;
-  for (let c = 0; c < raw.numberOfChannels; c++) { const d = raw.getChannelData(c); wrap = Math.max(wrap, Math.abs(d[0] - d[d.length - 1])); }
+  for (let c = 0; c < raw.numberOfChannels; c++) {
+    const d = raw.getChannelData(c); let m = 0;
+    for (let i = 1; i < d.length; i++) m += Math.abs(d[i] - d[i - 1]);
+    m /= d.length - 1;
+    wrap = Math.max(wrap, Math.abs(d[0] - d[d.length - 1]) / (m + 1e-9));
+  }
   const OAC = offlineCtor()!;
   const ctx = new OAC(2, Math.ceil(raw.duration * 2.2 * SR), SR);
-  const mix = buildMix(ctx, ctx.destination);
+  const mix = await mixed(ctx);
   const src = ctx.createBufferSource();
   src.buffer = raw; src.loop = true;
   src.connect(gain(ctx, dbToGain(def.lvl ?? -12), mix.loopIn));
@@ -128,7 +135,7 @@ export async function renderLoopPlayed(name: LoopName): Promise<{ played: AudioB
 export async function renderVoice(seed: number, kind: VoiceKind, utt = 1): Promise<AudioBuffer> {
   const OAC = offlineCtor()!;
   const ctx = new OAC(2, Math.ceil(7 * SR), SR);
-  const mix = buildMix(ctx, ctx.destination);
+  const mix = await mixed(ctx);
   speak(ctx, mix.voiceIn, 0.05, seed, kind, utt, { bpm: 126 });
   const b = await renderOffline(ctx);
   return b;

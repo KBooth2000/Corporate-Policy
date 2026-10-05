@@ -183,6 +183,16 @@ export class Hud {
       if (b.sub) drawText(g, b.sub, W / 2, y + 14, { align: 'center', color: '#d8d8d8', shadow: null, alpha: a });
     }
 
+    // Calculator Watch: enemy HP readouts
+    if (this.showEnemyHp) {
+      for (const a of w.actors) {
+        if (a.team !== 'enemy' || !a.alive) continue;
+        const f = r.worldToFrame(a.x, a.y - a.height - 12);
+        if (f.x < 0 || f.y < 0 || f.x > W || f.y > H) continue;
+        drawText(g, String(Math.ceil(a.hp)), f.x, f.y, { align: 'center', color: '#c8f0c8', outline: '#000' });
+      }
+    }
+
     // exit previews above exits (world-space anchored)
     if (w.floorCleared) this.drawExitPreviews(g, w);
 

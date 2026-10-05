@@ -52,7 +52,7 @@ function judge(kind, s) {
   if (s.clicks > 0) issues.push(`clicks:${s.clicks}`);
   if (kind === 'music') { if (s.rmsDb < -30) issues.push('QUIET'); if (s.rmsDb > -9) issues.push('LOUD'); if (s.silentPct > 20) issues.push(`gaps:${s.silentPct.toFixed(0)}%`); }
   if (kind === 'sfx') { if (s.peakDb < -24) issues.push('QUIET'); }
-  if (kind === 'loop') { if (s.rmsDb < -50) issues.push('QUIET'); if (s.wrapJump > 0.05) issues.push(`wrap:${s.wrapJump.toFixed(3)}`); }
+  if (kind === 'loop') { if (s.rmsDb < -50) issues.push('QUIET'); if (s.wrapJump > 6) issues.push(`wrap:${s.wrapJump.toFixed(1)}x`); }
   if (kind === 'voice') { if (s.peakDb < -30) issues.push('QUIET'); }
   return issues;
 }

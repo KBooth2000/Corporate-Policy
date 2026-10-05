@@ -3,7 +3,7 @@
 import {
   registerAudio, audio as audioProxy, AudioApi, SfxName, LoopName, MusicTrack, VoiceKind, SfxOpts, LoopHandle,
 } from './audio';
-import { buildMix, Mix, TRIM } from './mixer';
+import { buildMix, attachLimiter, Mix, TRIM } from './mixer';
 import { SfxBank } from './sfxbank';
 import { SFX, LOOPS } from './sfxdefs';
 import { Player } from './sequencer';
@@ -58,6 +58,7 @@ class Engine implements AudioApi {
       this.ctx = ctx;
       this.mix = buildMix(ctx, ctx.destination);
       this.applyVolumes(true);
+      void attachLimiter(ctx, this.mix);
       this.bank = new SfxBank(ctx);
       this.bank.onLoopReady = (n) => this.flushLoops(n);
       this.bank.start();

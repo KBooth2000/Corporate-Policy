@@ -34,9 +34,14 @@ export function postProcess(src: AudioBuffer, like: BaseAudioContext | null, tri
   const ch = src.numberOfChannels, sr = src.sampleRate;
   const data: Float32Array[] = [];
   for (let c = 0; c < ch; c++) data.push(src.getChannelData(c).slice());
-  // one-pole DC blocker (~10 Hz)
-  const R = 1 - (2 * Math.PI * 10) / sr;
-  for (const d of data) { let x1 = 0, y1 = 0; for (let i = 0; i < d.length; i++) { const y = d[i] - x1 + R * y1; x1 = d[i]; y1 = y; d[i] = y; } }
+  if (trim) {
+    // one-pole DC blocker (~10 Hz)
+    const R = 1 - (2 * Math.PI * 10) / sr;
+    for (const d of data) { let x1 = 0, y1 = 0; for (let i = 0; i < d.length; i++) { const y = d[i] - x1 + R * y1; x1 = d[i]; y1 = y; d[i] = y; } }
+  } else {
+    // loops: subtract the mean so the wrap stays perfectly continuous
+    for (const d of data) { let m = 0; for (let i = 0; i < d.length; i++) m += d[i]; m /= d.length; for (let i = 0; i < d.length; i++) d[i] -= m; }
+  }
   let len = src.length;
   if (trim) {
     let last = 0;
@@ -52,7 +57,7 @@ export function postProcess(src: AudioBuffer, like: BaseAudioContext | null, tri
     const d = data[c], o = out.getChannelData(c);
     for (let i = 0; i < len; i++) {
       let g = k;
-      if (i < fi) g *= i / fi;
+      if (trim && i < fi) g *= i / fi;
       if (trim && i > len - fo) g *= (len - i) / fo;
       o[i] = d[i] * g;
     }
@@ -101,6 +106,13 @@ export async function renderLoopDef(def: LoopDef, seed: number, like: BaseAudioC
   return postProcess(tmp, like, false);
 }
 
+/** Memory budget: long sounds keep one variant (play-time pitch/level jitter still varies them). */
+export function variantCount(n: SfxName): number {
+  const d = SFX[n];
+  const v = d.vars ?? 2;
+  return d.d > 1.3 ? 1 : d.d > 0.7 ? Math.min(v, 2) : v;
+}
+
 export class SfxBank {
   bufs = new Map<string, AudioBuffer[]>();
   loops = new Map<string, AudioBuffer>();
@@ -116,7 +128,7 @@ export class SfxBank {
     const names = (Object.keys(SFX) as SfxName[]).sort((a, b) => (SFX[a].pri ?? 5) - (SFX[b].pri ?? 5));
     for (const n of names) this.queue.push({ name: n, loop: false, variant: 0 });
     for (const n of Object.keys(LOOPS) as LoopName[]) this.queue.push({ name: n, loop: true, variant: 0 });
-    for (const n of names) for (let v = 1; v < (SFX[n].vars ?? 2); v++) this.queue.push({ name: n, loop: false, variant: v });
+    for (const n of names) for (let v = 1; v < variantCount(n); v++) this.queue.push({ name: n, loop: false, variant: v });
     void this.run();
   }
 

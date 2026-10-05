@@ -145,15 +145,90 @@ async function runBoss(act) {
       await page.screenshot({ path: `${out}/${tag}-9${i}-ending.png` });
       log('ending', i, await page.evaluate(() => window.__cp.app.top?.name));
     }
+    // credits run out → the run summary / hub takes over
+    const after = await page.evaluate(() => { const app = window.__cp.app; for (let k = 0; k < 60 * 90 && app.top?.name === 'ending'; k++) app.step(); app.draw(); return app.top?.name; });
+    await page.screenshot({ path: `${out}/${tag}-99-after-ending.png` });
+    log('after ending →', after);
+    if (after === 'ending') { failures++; log('FAIL: ending never finished'); }
   }
   if (errors.length) { failures++; log('CONSOLE ERRORS:\n' + errors.slice(0, 10).join('\n')); }
   else log('no console errors');
   await page.close();
 }
 
-const acts = which === 'all' ? [1, 2, 3, 4] : [Number(which)];
+// Optional Director boss (spec 6.6): only in PROMOTION_MODE 'full' (dev override) with a Director on the roster.
+async function runDirector() {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await page.routeWebSocket(/.*/, () => {});
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(`[pageerror] ${e.message}\n${e.stack}`));
+  await page.addInitScript(() => { window.__cpPromotionMode = 'full'; });
+  await page.goto(`${BASE}#play&seed=3&floor=7&type=director`);
+  await page.waitForTimeout(2500);
+  const log = (...a) => console.log('[director]', ...a);
+  const res = await page.evaluate(async () => {
+    const prof = await import('/src/game/profile.ts');
+    const chars = await import('/src/art/characters.ts');
+    const rng = await import('/src/core/rng.ts');
+    const p = prof.profile();
+    const look = chars.rollLook({ kind: 'enemy', archetype: 'team_leader', tier: 2 }, new rng.Rng(77));
+    p.promoted.push({ id: 'qa-dir', name: 'Derek Hollis', title: 'Head of Synergy', archetype: 'team_leader', rank: 4, look, strengths: ['bruiser'], weakness: 'decaf', weaknessKnown: false, kills: [{ floor: 7, weapon: 'stapler', method: 'ranged', at: Date.now() }, { floor: 9, weapon: 'clipboard', method: 'melee', at: Date.now() }], createdAt: Date.now() });
+    const app = window.__cp.app;
+    const gs = app.scenes.find((x) => x.name === 'gameplay');
+    gs.startFloor();
+    const b = gs.data.boss;
+    if (!b) return { ok: false, why: 'no director spawned' };
+    gs.player.maxHp = gs.player.hp = 5000;
+    const room = gs.world.map.rooms[b.arena];
+    // walk into the director's office
+    gs.player.x = room.rewardPoint.x - 40; gs.player.y = room.rewardPoint.y + 30;
+    for (let i = 0; i < 60; i++) app.step();
+    return { ok: true, mode: b.mode, room: room.kind };
+  });
+  log(JSON.stringify(res));
+  if (!res.ok) { failures++; await page.close(); return; }
+  await page.evaluate(() => { const app = window.__cp.app; for (let i = 0; i < 90; i++) app.step(); app.draw(); });
+  await page.screenshot({ path: `${out}/dir-01-intro.png` });
+  const st = await page.evaluate(() => {
+    const app = window.__cp.app; const gs = app.scenes.find((x) => x.name === 'gameplay'); const b = gs.data.boss; const p = gs.player;
+    const step = (s) => { for (let i = 0; i < s * 60; i++) app.step(); };
+    const until = (f, s) => { let t = 0; while (!f() && t < s) { step(0.1); t += 0.1; } };
+    until(() => b.mode === 'fight', 6);
+    step(2);
+    const out = [b.mode];
+    gs.world.damage(b, { amount: b.hp, type: 'blunt', method: 'melee', source: p }); step(0.2); out.push(b.mode);
+    p.x = b.x - 14; p.y = b.y + 4; p.startGrab(b); step(1.4); out.push(b.mode);
+    until(() => b.mode === 'fight', 6); out.push(b.mode, b.phase);
+    step(2); app.draw();
+    return out;
+  });
+  log('phases', JSON.stringify(st));
+  await page.screenshot({ path: `${out}/dir-02-phase2.png` });
+  const fin = await page.evaluate(() => {
+    const app = window.__cp.app; const gs = app.scenes.find((x) => x.name === 'gameplay'); const b = gs.data.boss; const p = gs.player;
+    const step = (s) => { for (let i = 0; i < s * 60; i++) app.step(); };
+    gs.world.damage(b, { amount: b.hp, type: 'blunt', method: 'melee', source: p }); step(0.2);
+    const m = b.mode;
+    p.x = b.x - 14; p.y = b.y + 4; p.startGrab(b); step(0.8); app.draw();
+    return m;
+  });
+  await page.screenshot({ path: `${out}/dir-03-finisher.png` });
+  const end = await page.evaluate(() => {
+    const app = window.__cp.app; const gs = app.scenes.find((x) => x.name === 'gameplay'); const b = gs.data.boss;
+    for (let i = 0; i < 240; i++) app.step(); app.draw();
+    return { mode: b.mode, alive: b.alive, hold: gs.world.holdClear, roster: gs.run ? 1 : 0 };
+  });
+  await page.screenshot({ path: `${out}/dir-04-after.png` });
+  log('final', fin, JSON.stringify(end));
+  if (end.alive || end.hold) { failures++; log('FAIL: director not defeated'); }
+  if (errors.length) { failures++; log('CONSOLE ERRORS:\n' + errors.slice(0, 10).join('\n')); } else log('no console errors');
+  await page.close();
+}
+
+const acts = which === 'all' ? [1, 2, 3, 4, 'director'] : [which === 'director' ? 'director' : Number(which)];
 for (const a of acts) {
-  try { await runBoss(a); } catch (e) { failures++; console.log(`[boss ${a}] EXCEPTION`, e); }
+  try { if (a === 'director') await runDirector(); else await runBoss(a); } catch (e) { failures++; console.log(`[boss ${a}] EXCEPTION`, e); }
 }
 await browser.close();
 console.log(failures ? `FAILED (${failures})` : 'ALL BOSSES OK');

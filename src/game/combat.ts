@@ -148,7 +148,8 @@ export function damage(world: World, target: Actor, info: DamageInfo): number {
     target.hp = 0;
     target.dying = true;
     target.onDeath(info);
-    world.onKilled(target, info, dir);
+    // death-savers (e.g. "Hang In There" poster) may revive the target inside onDeath
+    if (target.dying) world.onKilled(target, info, dir);
   }
   return amt + absorbed;
 }

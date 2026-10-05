@@ -2,7 +2,7 @@
 // Reports floors reached, deaths, console errors, softlocks (no progress for N seconds).
 import { chromium } from 'playwright-core';
 const [,, seed = '777', maxFloor = '20', god = '1', seconds = '240', startFloor = '1'] = process.argv;
-const URL = (process.env.URL || 'http://localhost:5173/') + `#play&seed=${seed}&floor=${startFloor}`;
+const URL = (process.env.URL || 'http://localhost:5199/') + `#play&seed=${seed}&floor=${startFloor}`;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errors = [];
@@ -81,6 +81,7 @@ await page.evaluate(({ god, speed }) => {
 }, { god: god === '1', speed: 3 });
 const t0 = Date.now();
 let last = '';
+let menuTicks = 0;
 while ((Date.now() - t0) / 1000 < +seconds) {
   await page.waitForTimeout(5000);
   const s = await page.evaluate(() => { const a = window.__cp.app; const top = a.top; return { scene: top?.name, floor: top?.run?.floor, type: top?.plan?.floor_type, hp: top?.player ? Math.round(top.player.hp) : null, enemies: top?.world?.totalLiveEnemies?.(), cleared: top?.world?.floorCleared, rooms: top?.world?.rooms?.filter(r=>!r.cleared).length, kills: top?.run?.log?.kills }; });
@@ -89,7 +90,13 @@ while ((Date.now() - t0) / 1000 < +seconds) {
   if (line === last) { console.log('!! no change in 5s'); await page.screenshot({ path: `scratch/bot-stuck-${Date.now()}.png` }); }
   last = line;
   if (s.floor >= +maxFloor && s.cleared) break;
-  if (s.scene !== 'gameplay' && s.scene !== 'transition' && s.scene !== 'pause') { console.log('left gameplay:', s.scene); break; }
+  if (s.scene !== 'gameplay' && s.scene !== 'transition') {
+    // menus / reward emails / shops: navigate with real key presses
+    menuTicks++;
+    for (let k = 0; k < 6; k++) { await page.keyboard.press(k % 3 === 2 ? 'ArrowRight' : 'Enter'); await page.waitForTimeout(250); }
+    if (menuTicks % 4 === 0) await page.keyboard.press('Escape');
+    if (['hub', 'summary', 'mainmenu', 'menu'].includes(s.scene) || menuTicks > 40) { console.log('left gameplay:', s.scene); break; }
+  } else menuTicks = 0;
 }
 await page.screenshot({ path: 'scratch/bot-final.png' });
 const st = await page.evaluate(() => window.__botState);

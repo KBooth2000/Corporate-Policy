@@ -75,8 +75,8 @@ export class FallSequence implements Cutscene {
       }
       // floor counter
       const fl = Math.max(0, Math.round(o.floors * (1 - t / cut)));
-      g.fillStyle = 'rgba(10,10,16,0.75)'; g.fillRect(W - 92, 34, 82, 22);
-      drawText(g, `FLOOR ${String(fl).padStart(2, '0')}`, W - 51, 40, { align: 'center', color: '#ff9a2a', shadow: null });
+      g.fillStyle = 'rgba(10,10,16,0.75)'; g.fillRect(10, H - 56, 82, 22);
+      drawText(g, `FLOOR ${String(fl).padStart(2, '0')}`, 51, H - 50, { align: 'center', color: '#ff9a2a', shadow: null });
       // the boss, tumbling (2x close-up)
       g.save();
       g.translate(Math.round(W / 2 + Math.sin(t * 3) * 20), Math.round(H * 0.42));

@@ -35,6 +35,8 @@ async function load(hash, { w = 1280, h = 720 } = {}) {
       return import(hit || p);
     };
   });
+  // the meta module filters weapon pools by profile unlocks; QA wants every weapon rarity available
+  await page.evaluate(async () => { (await __imp('/src/game/weapons.ts')).setWeaponUnlockFilter(() => true); });
   return { page, ctx };
 }
 async function tap(page, code, ms = 90) { await page.keyboard.down(code); await sleep(ms); await page.keyboard.up(code); await sleep(70); }
@@ -548,10 +550,12 @@ await scenario('rewards', async () => {
     const reg = await __imp('/src/game/registry.ts');
     await __imp('/src/game/content/rewards.ts');
     const s = __cp.app.top;
+    for (const a of s.world.actors) if (a.team === 'enemy') { a.dead = true; a.corpse = true; }
+    s.world.update(1 / 60);
     const out = {};
     const at = { x: s.player.x + 10, y: s.player.y };
     s.player.x -= 150; if (!s.world.isWalkablePx(s.player.x, s.player.y)) s.player.x += 300;
-    s.player.hp = 30;
+    s.player.hp = 30; s.player.invuln = 9999;
     const kinds = () => s.world.entities.filter((e) => e.o).map((e) => e.o.kind + (e.o.weapon ? ':' + e.o.weapon.id : '') + (e.o.amount ? ':' + e.o.amount : ''));
     const clear = () => { for (const e of s.world.entities) if (e.o) e.dead = true; s.world.update(1 / 60); };
     for (const k of ['cash', 'heal', 'weapon', 'benefit', 'rage_mod', 'desk_item', 'elite']) {
@@ -576,7 +580,6 @@ await scenario('rewards', async () => {
   assert(r.elite.some((k) => k.startsWith('weapon')) && r.elite.some((k) => k.startsWith('cash')), 'elite bonus: rare weapon plus cash');
   assert(r.rareElite >= 0.95 && r.rareElite >= r.rareStd, `elite weapon rewards are always rare+ (${r.rareElite}) vs standard (${r.rareStd})`);
   // Stress Modifier email
-  await page.evaluate(() => { const s = __cp.app.top; const pk = s.world.entities.find((e) => e.o && e.o.kind === 'reward'); void pk; });
   const pk = await page.evaluate(async () => {
     const reg = await __imp('/src/game/registry.ts');
     const s = __cp.app.top;

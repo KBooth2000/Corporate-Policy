@@ -355,7 +355,7 @@ export abstract class Boss extends Actor {
     this.grabbedBy = null;
     this.staggerWindow = false;
     if (this.mode === 'window') this.phaseExecution();
-    else if (this.mode === 'final') { this.mode = 'finisher'; this.finisher(); }
+    else if (this.mode === 'final') { this.mode = 'finisher'; this.s.hud.bossBar = null; this.s.hud.policy = null; this.finisher(); }
   }
 
   /** Spec 6.1: grabbing in a stagger window → 1–1.5 s phase-transition execution, then the arena changes. */

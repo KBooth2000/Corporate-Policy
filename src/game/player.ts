@@ -248,6 +248,8 @@ export class Player extends Actor {
     void dt;
   }
 
+  /** Compliance policies (spec 6.4) do not block a verb — breaking the active policy is punished via onPolicyBreach.
+   *  Modules that must hard-block a verb (e.g. Quiet Carriage) intercept it themselves. Always returns false. */
   private verbBanned(v: 'dash' | 'ranged' | 'rage' | 'grab' | 'melee'): boolean {
     if (this.bannedVerbs.has(v)) { this.onPolicyBreach?.(v); return false; }
     return false;
