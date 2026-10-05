@@ -1,0 +1,224 @@
+name: Build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Publish a GitHub Release (pre-release) with the build artifacts'
+        type: boolean
+        default: false
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  CI: 'true'
+
+jobs:
+  # ---------------------------------------------------------------------------------------------
+  web:
+    name: Web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Typecheck (non-blocking)
+        run: npx tsc --noEmit
+        continue-on-error: true
+      - run: npm run build
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CompanyPolicy-Web
+          path: dist
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------------------------
+  windows:
+    name: Windows installer + portable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
+          key: electron-win-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run build
+      - name: Package (NSIS installer + portable exe)
+        run: npx electron-builder --win --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Zip unpacked build (Steam depot / manual install)
+        shell: pwsh
+        run: |
+          $v = node -p "require('./package.json').version"
+          Compress-Archive -Path release/win-unpacked/* -DestinationPath "release/CompanyPolicy-$v-win-x64.zip" -CompressionLevel Optimal
+          Get-ChildItem release | Format-Table Name, Length
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CompanyPolicy-Windows
+          path: |
+            release/CompanyPolicy-Setup-*.exe
+            release/CompanyPolicy-Portable-*.exe
+            release/CompanyPolicy-*-win-x64.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------------------------
+  linux:
+    name: Linux AppImage (Steam Deck testing)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: electron-linux-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run build
+      - name: Package AppImage
+        run: npx electron-builder --linux AppImage --x64 --publish never
+      - name: Smoke test packaged app under Xvfb (non-blocking)
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgbm1 libasound2t64 libgtk-3-0t64 libnss3 || true
+          BIN=$(find release/linux-unpacked -maxdepth 1 -type f -perm -u+x ! -name '*.so*' ! -name 'chrome*' ! -name '*.sh' | head -1)
+          echo "binary: $BIN"
+          CP_SMOKE=1 timeout 90 xvfb-run -a "$BIN" --no-sandbox --disable-gpu --disable-dev-shm-usage 2>&1 | tee smoke.log
+          grep -q SMOKE_OK smoke.log
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: CompanyPolicy-Linux-AppImage
+          path: release/CompanyPolicy-*-linux-x64.AppImage
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------------------------
+  android:
+    name: Android APK + AAB
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run build
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Select signing key (secrets if present, else committed sideload key)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KS_ALIAS" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            {
+              echo "CP_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore"
+              echo "CP_KEYSTORE_PASSWORD=$KS_PASS"
+              echo "CP_KEY_ALIAS=$KS_ALIAS"
+              echo "CP_KEY_PASSWORD=${KEY_PASS:-$KS_PASS}"
+            } >> "$GITHUB_ENV"
+            echo "Signing with the repository's ANDROID_KEYSTORE_* secrets."
+          else
+            echo "No signing secrets set: using the committed SIDELOAD key (test distribution only; not for Google Play)."
+          fi
+      - name: Build release APK + AAB
+        working-directory: android
+        run: ./gradlew assembleRelease bundleRelease --stacktrace
+      - name: Collect and verify
+        run: |
+          V=$(node -p "require('./package.json').version")
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/CompanyPolicy-$V-android.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab "out/CompanyPolicy-$V-android.aab"
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose --print-certs "out/CompanyPolicy-$V-android.apk" | head -12
+          ls -la out
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CompanyPolicy-Android-APK
+          path: out/*.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: CompanyPolicy-Android-AAB
+          path: out/*.aab
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------------------------
+  release:
+    name: GitHub Release
+    needs: [web, windows, linux, android]
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Package web build
+        run: |
+          V=$(node -p "require('./package.json').version")
+          (cd artifacts/CompanyPolicy-Web && zip -qr "../CompanyPolicy-$V-web.zip" .)
+          rm -rf artifacts/CompanyPolicy-Web
+          find artifacts -type f | sort
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build-{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('Company Policy {0}', github.ref_name) || format('Company Policy build {0}', github.run_number) }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: artifacts/**/*

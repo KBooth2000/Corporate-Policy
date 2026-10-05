@@ -2,12 +2,19 @@
   "name": "company-policy",
   "version": "1.0.0",
   "description": "Company Policy - a top-down corporate-satire action roguelike",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "soak": "vite-node tools/soak.ts"
+    "soak": "vite-node tools/soak.ts",
+    "electron:dev": "vite build && electron .",
+    "icons": "node tools/make-icons.mjs",
+    "dist:win": "vite build && electron-builder --win nsis portable --x64 --publish never",
+    "dist:linux": "vite build && electron-builder --linux AppImage --x64 --publish never",
+    "cap:sync": "vite build && cap sync android",
+    "android:build": "npm run cap:sync && node android/run-gradle.mjs assembleRelease bundleRelease"
   },
   "repository": {
     "type": "git",
@@ -20,12 +27,87 @@
   },
   "homepage": "https://github.com/KBooth2000/Office_Game#readme",
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@types/node": "^26.6.4",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "playwright-core": "^1.63.0",
     "typescript": "^5.9.3",
     "vite": "^6.4.3",
     "vite-node": "^3.2.4"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2"
+  },
+  "build": {
+    "appId": "com.intellidrift.companypolicy",
+    "productName": "Company Policy",
+    "copyright": "Copyright (c) Intellidrift",
+    "artifactName": "CompanyPolicy-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!**/node_modules/**",
+      "!**/*.map"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "CompanyPolicy-${version}-win-x64.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Company Policy",
+      "artifactName": "CompanyPolicy-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "CompanyPolicy-Portable-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "synopsis": "Top-down corporate satire roguelike",
+      "artifactName": "CompanyPolicy-${version}-linux-x64.${ext}"
+    }
+  }
 }
