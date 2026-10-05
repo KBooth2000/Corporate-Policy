@@ -6,6 +6,7 @@ import { drawText, measure } from '../render/font';
 import { Rng, fxRng } from '../core/rng';
 import { Vec, clamp, dist, lerp, Rect, circleRect } from '../core/math';
 import { FloorMap, PropDef, RoomDef, DoorDef, BreachDef, T, TILE, SOLID_TILES, PROJECTILE_BLOCKING, BREACHABLE_TILES, tileAt, footprint } from './world-types';
+import { prewarmCharacter } from '../art/characters';
 import { renderFloorBase, redrawTiles, propSprite, doorSprite, exitSprite, PropState, DoorState } from '../art/env';
 import { Entity, Actor, DamageInfo } from './entity';
 import { Telegraph, Shape, damage as applyDamage } from './combat';
@@ -184,9 +185,19 @@ export class World {
   add<E extends Entity>(e: E): E {
     e.world = this;
     this.entities.push(e);
-    if (e instanceof Actor) this.actors.push(e);
+    if (e instanceof Actor) { this.actors.push(e); this.prewarm.push(e); }
     e.onAdded();
     return e;
+  }
+
+  /** Actors whose remaining animations still need baking (spread over frames, ~4 ms budget). */
+  private prewarm: Actor[] = [];
+  private prewarmStep(): void {
+    const t0 = performance.now();
+    while (this.prewarm.length && performance.now() - t0 < 4) {
+      const a = this.prewarm[0];
+      if (!a.baked || a.dead || prewarmCharacter(a.baked, undefined, 4 - (performance.now() - t0))) this.prewarm.shift();
+    }
   }
 
   telegraph(owner: Actor | null, shape: Shape, windup: number, onFire: (s: Shape) => void, opts?: Telegraph['opts']): Telegraph {
@@ -608,6 +619,7 @@ export class World {
       return;
     }
     this.time += dt;
+    this.prewarmStep();
     this.updateFlow();
     // entities
     for (const e of this.entities) {
