@@ -111,6 +111,8 @@ export class GameplayScene implements Scene {
   private updateCtl(): void {
     const inp = app.input;
     const c = this.ctl;
+    const bot = (window as any).__cpBot as ((c: PlayerCtl, s: GameplayScene) => void) | undefined;
+    if (bot) { bot(c, this); return; }
     c.move = inp.move();
     const stick = inp.stickAim();
     if (inp.device === 'kbm') {

@@ -281,14 +281,19 @@ export class Player extends Actor {
     }
     if (c.pressed('heavy') && !this.swing && this.attackCd <= 0) { if (!this.verbBanned('melee')) this.startSwing(true, 1); }
     if (holdMode) {
-      if (c.down('melee') && !this.swing && this.attackCd <= 0 && c.held('melee') > 0.22) {
-        if (!this.charging) { this.charging = true; audio.sfx('charge', { vol: 0.5 }); }
-        this.charge = Math.min(1, (c.held('melee') - 0.22) / 0.6);
+      // tap = light attack on press (responsive); keep holding = charge a heavy, release to swing (spec 2.1)
+      if (c.pressed('melee')) {
+        if (!this.swing && this.attackCd <= 0) { if (!this.verbBanned('melee')) this.startSwing(false, 1); }
+        else this.bufferedMelee = 0.25;
       }
-      if (c.released('melee')) {
-        if (this.charging) { this.charging = false; if (!this.verbBanned('melee')) this.startSwing(true, 0.6 + this.charge * 0.6); this.charge = 0; }
-        else if (!this.swing && this.attackCd <= 0) { if (!this.verbBanned('melee')) this.startSwing(false, 1); }
-        else if (this.swing && !this.swing.heavy) this.bufferedMelee = 0.25;
+      if (c.down('melee') && !this.swing && this.attackCd <= 0 && c.held('melee') > 0.3) {
+        if (!this.charging) { this.charging = true; this.bufferedMelee = 0; audio.sfx('charge', { vol: 0.5 }); }
+        this.charge = Math.min(1, (c.held('melee') - 0.3) / 0.6);
+      }
+      if (c.released('melee') && this.charging) {
+        this.charging = false;
+        if (!this.verbBanned('melee')) this.startSwing(true, 0.6 + this.charge * 0.6);
+        this.charge = 0;
       }
     } else if (c.pressed('melee')) {
       if (!this.swing && this.attackCd <= 0) { if (!this.verbBanned('melee')) this.startSwing(false, 1); }
