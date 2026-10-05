@@ -259,3 +259,66 @@ export function shutterSprite(vertical: boolean, damaged: boolean): Sprite {
 export function tapeSprite(): Sprite {
   return cached('tape', () => bakeSprite(8, 4, (b) => { box(b, 0, 0, 8, 4, ramp('#c02a2a')); b.hline(1, 6, 1, C('#ff8a7a')); }, 4, 2));
 }
+
+// =============================================================================================== Act 4
+const HELI = ramp('#1e2a44');
+const GOLDP = ramp('#d4a537');
+/** Executive helicopter (side view, facing left), 120×56, without the main rotor (drawn live). */
+export function heliSprite(doorOpen: boolean): Sprite {
+  return cached(`heli:${doorOpen}`, () => bakeSprite(124, 58, (b) => {
+    // tail boom + fin + tail rotor hub
+    poly(b, [[70, 22], [118, 18], [118, 24], [70, 32]], HELI.sh);
+    b.hline(72, 116, 19, HELI.lt);
+    poly(b, [[110, 4], [118, 4], [120, 20], [108, 20]], HELI.base);
+    b.ellipse(116, 12, 2, 2, C('#8e98a6'));
+    // cabin
+    for (let y = 10; y < 44; y++) for (let x = 6; x < 82; x++) {
+      const dx = (x - 44) / 38, dy = (y - 27) / 17;
+      if (dx * dx + dy * dy > 1) continue;
+      const u = (y - 10) / 34;
+      b.set(x, y, u < 0.12 ? HELI.hi : u < 0.3 ? HELI.lt : u < 0.75 ? HELI.base : HELI.sh);
+    }
+    // canopy glass
+    poly(b, [[8, 26], [14, 13], [34, 11], [34, 28]], ramp('#5a8ab8').base);
+    poly(b, [[12, 24], [16, 15], [24, 14]], ramp('#9fd0f0').base);
+    // gold livery stripe + invented logo ("Hartley Group" hex)
+    b.hline(10, 80, 32, GOLDP.base); b.hline(12, 78, 33, GOLDP.sh);
+    poly(b, [[58, 18], [62, 16], [66, 18], [66, 22], [62, 24], [58, 22]], GOLDP.base);
+    b.set(62, 20, HELI.dk);
+    // door
+    if (doorOpen) { b.rect(38, 16, 16, 18, C('#0e121e')); b.rect(54, 16, 4, 18, HELI.lt); b.rect(42, 22, 6, 6, ramp('#a01828').base); }
+    else { b.vline(38, 16, 34, HELI.dk); b.vline(54, 16, 34, HELI.dk); b.set(52, 25, GOLDP.hi); }
+    // rotor mast
+    b.rect(40, 4, 8, 7, ramp('#3a3d46').base); b.rect(42, 1, 4, 4, ramp('#8e98a6').base);
+    // skids
+    b.hline(10, 74, 54, C('#2a2c34')); b.hline(8, 12, 53, C('#2a2c34')); b.hline(70, 76, 53, C('#2a2c34'));
+    b.vline(22, 44, 53, C('#3a3d46')); b.vline(60, 44, 53, C('#3a3d46'));
+  }, 62, 56));
+}
+
+/** Trophy cabinet (glass-fronted, gold cups); state intact | destroyed. */
+export function trophySprite(state: 'intact' | 'damaged' | 'destroyed'): Sprite {
+  return cached(`trophies:${state}`, () => bakeSprite(48, 40, (b) => {
+    const WOOD = ramp('#5a3020');
+    box(b, 0, 0, 48, 40, WOOD, { top: true });
+    box(b, 3, 3, 42, 30, ramp(state === 'destroyed' ? '#1a1418' : '#2a3a4a'));
+    if (state !== 'destroyed') {
+      for (let k = 0; k < 5; k++) { const x = 6 + k * 8, y = k % 2 ? 10 : 20; b.rect(x, y + 4, 5, 2, GOLDP.sh); b.rect(x + 1, y + 1, 3, 3, GOLDP.base); b.set(x, y + 1, GOLDP.hi); b.set(x + 4, y + 1, GOLDP.hi); b.set(x + 1, y, GOLDP.hi); }
+      b.hline(4, 43, 17, WOOD.lt); b.hline(4, 43, 27, WOOD.lt);
+      b.line(6, 5, 12, 11, C('#cfe8f4'));
+    } else { b.line(4, 6, 20, 30, C('#9aa4b4')); b.line(40, 5, 26, 28, C('#9aa4b4')); }
+    if (state === 'damaged') b.line(30, 4, 40, 20, C('#cfe8f4'));
+    box(b, 0, 34, 48, 6, WOOD);
+  }, 24, 40));
+}
+
+/** Giant boardroom screen frame (content is drawn live). 152×86. */
+export function bigScreenSprite(cracked: boolean): Sprite {
+  return cached(`bigscreen:${cracked}`, () => bakeSprite(152, 86, (b) => {
+    box(b, 0, 0, 152, 80, ramp('#1a1b22'), { top: true });
+    box(b, 4, 4, 144, 72, ramp('#05060a'));
+    box(b, 64, 80, 24, 6, ramp('#3a3d46'));
+    b.hline(2, 149, 1, GOLDP.base);
+    if (cracked) { b.line(30, 6, 76, 40, C('#9aa4b4')); b.line(76, 40, 140, 22, C('#9aa4b4')); b.line(76, 40, 60, 74, C('#9aa4b4')); b.line(76, 40, 120, 70, C('#6a7484')); }
+  }, 76, 86));
+}

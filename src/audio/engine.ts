@@ -70,7 +70,6 @@ class Engine implements AudioApi {
         if (document.hidden) void this.ctx.suspend().catch(() => {});
         else this.tryResume();
       });
-      ctx.addEventListener?.('statechange', () => { if ((ctx.state as string) === 'interrupted' || ctx.state === 'suspended') { /* resumed on next gesture */ } });
       this.tryResume();
       // a track requested before unlock starts now
       if (this.track !== 'none') { const t = this.track; this.track = 'none'; this.music.play(t, 0.05); }

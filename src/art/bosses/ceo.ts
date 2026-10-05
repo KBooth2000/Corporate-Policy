@@ -83,8 +83,8 @@ function idle(f: number, v: View): FigPose {
   p.crouch = f % 2;
   p.legs = v === 'side' ? [[3, 0], [-3, 0]] : [[2, 0], [2, 0]];
   // club resting on the shoulder, other hand in pocket
-  p.arms = v === 'side' ? [[3, -4], [-2, 20]] : [[-2, -6], [2, 20]];
-  p.item = { kind: 'club', angle: v === 'side' ? -2.4 : v === 'front' ? -1.15 : -1.9 };
+  p.arms = v === 'side' ? [[3, -4], [-2, 20]] : v === 'front' ? [[6, 17], [2, 20]] : [[-2, -6], [2, 20]];
+  p.item = { kind: 'club', angle: v === 'side' ? -2.4 : v === 'front' ? 1.75 : -1.9 };
   p.expr = f === 3 ? 'blink' : 'grin';
   return p;
 }
@@ -92,8 +92,8 @@ function walk(f: number, v: View, n: number): FigPose {
   const p = P0();
   p.legs = walkLegs(v, f / n, 7, 4);
   const sw = Math.sin((f / n) * Math.PI * 2);
-  p.arms = v === 'side' ? [[3, -4], [-sw * 6, 20]] : [[-2, -6], [3, 20]];
-  p.item = { kind: 'club', angle: v === 'side' ? -2.4 : v === 'front' ? -1.15 : -1.9 };
+  p.arms = v === 'side' ? [[3, -4], [-sw * 6, 20]] : v === 'front' ? [[6, 17], [3, 20]] : [[-2, -6], [3, 20]];
+  p.item = { kind: 'club', angle: v === 'side' ? -2.4 : v === 'front' ? 1.75 + sw * 0.15 : -1.9 };
   p.crouch = f % 3 === 0 ? 1 : 0;
   return p;
 }

@@ -72,7 +72,7 @@ const ACT2_MEL_B =
 export const ACT2: TrackDef = {
   id: 'act2', title: 'Smooth Pipeline Jazz', combatTitle: 'Quarter-End Tech House',
   bpm: 124, swing: 0.1, key: 'Eb major', desc: 'Smooth-jazz soprano sax over Rhodes and fretless bass; drops into rolling tech house with FM bass, shuffled hats and a filtered sax hook.',
-  prog: ACT2_PROG, rv: { size: 2.4, damp: 0.5 }, delay: { beats: 0.75, fb: 0.4 }, rageLow: 27,
+  prog: ACT2_PROG, xGain: 0.65, rv: { size: 2.4, damp: 0.5 }, delay: { beats: 0.75, fb: 0.4 }, rageLow: 27,
   parts: [
     // ---- exploration: smooth jazz
     { i: 'sax', k: 'm', on: 'x', p: { A: ACT2_MEL_A, B: ACT2_MEL_B }, o: 'AB', v: 0.85, rv: 0.35, dl: 0.12, hum: 0.5 },
@@ -114,7 +114,7 @@ export const ACT3_MEL =
 export const ACT3: TrackDef = {
   id: 'act3', title: 'Your Call Is Important To Us', combatTitle: 'Minimal Compliance',
   bpm: 126, key: 'A minor', desc: 'Original baroque hold music (harpsichord, strings, pizzicato) squeezed through a 350 Hz–3.2 kHz phone line; drops into minimal techno with bleeps, dub stabs and the harpsichord figure.',
-  prog: ACT3_PROG, exploreFx: 'phone', rv: { size: 1.8, damp: 0.6 }, delay: { beats: 0.75, fb: 0.45 }, rageLow: 33,
+  prog: ACT3_PROG, exploreFx: 'phone', xGain: 0.55, rv: { size: 1.8, damp: 0.6 }, delay: { beats: 0.75, fb: 0.45 }, rageLow: 33,
   parts: [
     // ---- exploration: hold music
     { i: 'harpsi', k: 'm', on: 'x', p: { A: ACT3_MEL }, o: 'A _*16', v: 1, rv: 0.12 },
