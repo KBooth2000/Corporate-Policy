@@ -41,13 +41,20 @@ for (const t of TEMPLATES) {
 }
 
 /** Templates of a kind and cell size usable for a theme (department templates + shared pool). */
+const forCache = new Map<string, Tpl[]>();
 export function templatesFor(kind: RoomKind, cw: number, ch: number, theme: ThemeId): Tpl[] {
-  const all = byKey.get(`${kind}:${cw}x${ch}`) ?? [];
-  return all.filter((t) => !t.themes || t.themes.includes(theme));
+  const key = `${kind}:${cw}x${ch}:${theme}`;
+  let r = forCache.get(key);
+  if (!r) { r = (byKey.get(`${kind}:${cw}x${ch}`) ?? []).filter((t) => !t.themes || t.themes.includes(theme)); forCache.set(key, r); }
+  return r;
 }
 
 /** Cell shapes available for a kind (any theme). */
+const shapeCache = new Map<string, [number, number][]>();
 export function shapesFor(kind: RoomKind, theme: ThemeId): [number, number][] {
+  const key = kind + ':' + theme;
+  const c = shapeCache.get(key);
+  if (c) return c.map((x) => [x[0], x[1]] as [number, number]);
   const seen = new Set<string>();
   const out: [number, number][] = [];
   for (const t of TEMPLATES) {
@@ -55,7 +62,8 @@ export function shapesFor(kind: RoomKind, theme: ThemeId): [number, number][] {
     const k = t.cw + 'x' + t.ch;
     if (!seen.has(k)) { seen.add(k); out.push([t.cw, t.ch]); }
   }
-  return out;
+  shapeCache.set(key, out);
+  return out.map((x) => [x[0], x[1]] as [number, number]);
 }
 
 /** Library statistics for reports/soak. */

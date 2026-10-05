@@ -1,47 +1,62 @@
-// ENVIRONMENT ART CONTRACT (spec 4.3 theming, 9.1 palettes). Tiles, walls, props, doors, exits.
+// ENVIRONMENT ART CONTRACT (spec 4.3 theming, 9.1 palettes). Tiles, walls, props, doors, exits, minimap.
+// Implementation lives in src/art/env/*. All art is procedural and cached.
+//
+// Usage (gameplay):
+//   const base = renderFloorBase(map);              // once per floor; draw at world (0,0)
+//   redrawTiles(map, base, tx0, ty0, tx1, ty1);     // after breaches (tiles -> RUBBLE) / broken windows
+//   drawSprite(g, propSprite(p, state, frame), p.x, p.y);   // origin = base centre; depth-sort by p.y
+//   drawSprite(g, doorSprite(d.orient, d.len, state), d.tx * TILE, d.ty * TILE);
+//   drawSprite(g, exitSprite(e.kind, e.available, open), e.x, e.y);
+//   const mm = renderMinimap(map, visited, currentRoom, cleared);
 import type { FloorMap, PropDef } from '../game/world-types';
-import { T, TILE } from '../game/world-types';
 import type { Sprite } from '../render/canvas';
-import { makeCanvas, ctx2d, paint, sprite, rect } from '../render/canvas';
-import type { ExitKind } from '../data/ids';
+import type { Act, ExitKind, ThemeId } from '../data/ids';
+import { renderBase, redrawRegion, skinFor } from './env/tiles';
+import { getSkin, Skin } from './env/skin';
+import { buildPropSprite, PropState as PS } from './env/props';
+import { buildDoorSprite, buildExitSprite, DoorState as DS } from './env/doors';
+import { buildMinimap } from './env/minimap';
 
-export type PropState = 'intact' | 'damaged' | 'destroyed' | 'active' | 'used';
-export type DoorState = 'open' | 'closed' | 'locked';
+export type PropState = PS;
+export type DoorState = DS;
 
-// ----------------------------------------------------------------------------
-// Placeholder implementation (replaced by the environment art module).
-const COLS: Record<number, string> = { [T.FLOOR]: '#9c927e', [T.CORE_FLOOR]: '#7d8a8f', [T.WALL]: '#d8d2c4', [T.CORE_WALL]: '#5c6870', [T.PARTITION]: '#c9c2b0', [T.GLASS]: '#9fd0e6', [T.CUBICLE]: '#7a7f8a', [T.WINDOW]: '#6fb6e6', [T.WINDOW_SEALED]: '#4a90c0', [T.RUBBLE]: '#8a8072', [T.DOOR]: '#9c927e', [T.VOID]: '#101014', [T.WATER]: '#4a7fb0', [T.PIT]: '#000000', [T.WINDOW_BROKEN]: '#202838' };
+let active: Skin = getSkin('reception', 1, 1);
 
-/** Render the full static floor background (floor, walls, static decor). */
+/** Select the department skin used by propSprite/doorSprite/exitSprite (renderFloorBase does this for you). */
+export function setEnvSkin(theme: ThemeId, act: Act, floorNumber = 6): void { active = getSkin(theme, act, floorNumber); }
+
+/** Render the full static floor background (floor, walls, windows, exterior, decals). Also selects the skin. */
 export function renderFloorBase(map: FloorMap): HTMLCanvasElement {
-  const c = makeCanvas(map.w * TILE, map.h * TILE);
-  redrawTiles(map, c, 0, 0, map.w - 1, map.h - 1);
-  return c;
+  active = skinFor(map);
+  return renderBase(map);
 }
 
-/** Re-render a tile region after destruction (breach, broken window). Inclusive tile bounds. */
+/** Re-render a tile region after destruction (breach, broken window). Inclusive tile bounds; neighbours' wall faces,
+ *  shadows and parapets are refreshed automatically. */
 export function redrawTiles(map: FloorMap, canvas: HTMLCanvasElement, tx0: number, ty0: number, tx1: number, ty1: number): void {
-  const g = ctx2d(canvas);
-  for (let y = Math.max(0, ty0); y <= Math.min(map.h - 1, ty1); y++)
-    for (let x = Math.max(0, tx0); x <= Math.min(map.w - 1, tx1); x++) {
-      const t = map.tiles[y * map.w + x];
-      rect(g, x * TILE, y * TILE, TILE, TILE, COLS[t] ?? '#ff00ff');
-    }
+  redrawRegion(map, canvas, tx0, ty0, tx1, ty1);
 }
 
-/** Prop sprite with origin at the prop's base centre. */
-export function propSprite(p: PropDef, state: PropState = 'intact'): Sprite {
-  const w = Math.max(6, p.w), h = Math.max(6, p.h + 10);
-  return sprite(paint(w, h, (g) => rect(g, 0, 0, w, h, state === 'destroyed' ? '#55524c' : '#6a7480')), w / 2, h);
+/** Prop sprite with origin at the prop's base centre. `frame` (optional) selects animation frames for
+ *  blinking LEDs, sparks, smoke and candle flicker (cycle 0..3 at ~6-8 fps). */
+export function propSprite(p: PropDef, state: PropState = 'intact', frame = 0): Sprite {
+  return buildPropSprite(p, state, frame, active);
 }
 
-/** Door sprite covering the door tiles (origin top-left of the first tile). */
+/** Door sprite covering the door tiles (origin top-left of the first tile). open = frame only; closed = doors;
+ *  locked = security shutter with a red lamp (room sealed during combat). */
 export function doorSprite(orient: 'h' | 'v', len: number, state: DoorState): Sprite {
-  const w = orient === 'h' ? len * TILE : TILE, h = orient === 'h' ? TILE : len * TILE;
-  return sprite(paint(w, h, (g) => rect(g, 0, 0, w, h, state === 'open' ? 'rgba(0,0,0,0)' : state === 'locked' ? '#a03030' : '#706050')), 0, 0);
+  return buildDoorSprite(orient, len, state, active);
 }
 
-/** Exit doors in the building core (stairs / lift / corridor). Origin at base centre. */
+/** Exit doors in the building core (stairs / lift / corridor). Origin at base centre (= ExitDef x,y).
+ *  available=false shows OUT OF ORDER tape; open=true shows the unlocked/open exit (floor cleared). */
 export function exitSprite(kind: ExitKind, available: boolean, open: boolean): Sprite {
-  return sprite(paint(32, 32, (g) => rect(g, 0, 0, 32, 32, !available ? '#333' : open ? '#3a8a4a' : kind === 'lift' ? '#808890' : '#605040')), 16, 32);
+  return buildExitSprite(kind, available, open, active);
+}
+
+/** HUD minimap (1 px per tile + 2 px border). Rooms: current (blue), cleared (green), visited uncleared (red),
+ *  known-but-unvisited neighbours (ghost outline). Doors, exits and opened breaches are marked. */
+export function renderMinimap(map: FloorMap, visited: Set<number>, current: number, cleared: Set<number>): HTMLCanvasElement {
+  return buildMinimap(map, visited, current, cleared);
 }

@@ -304,6 +304,12 @@ export class Player extends Actor {
 
     if (this.swing) this.updateSwing(dt);
 
+    // [AI hook] Lawyer injunction field (spec 5.2): while `injunctionT` > 0 (set/decayed by src/game/enemies/common.ts
+    // ZoneLayer) the player cannot fire ranged weapons or throw.
+    if ((this as any).injunctionT > 0) {
+      if (c.pressed('ranged')) { audio.sfx('ui_error', { vol: 0.6 }); this.world.floatText(this.x, this.y - 36, 'INJUNCTION: NO RANGED', '#d9b45a'); }
+      return;
+    }
     // ranged / throw (spec 2.1)
     const r = this.run.loadout.ranged;
     if (r && r.ammo > 0 && def(r.id).id === 'laser_pointer') {

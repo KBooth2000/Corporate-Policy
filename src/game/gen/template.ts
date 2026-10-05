@@ -96,6 +96,8 @@ export interface Tpl {
   lights: { x: number; y: number }[];
   /** Usable door sockets: key `${side}${cellIndex}` with side N/E/S/W. */
   sockets: Set<string>;
+  /** 2x2-body connected component of each usable socket: doors in use must share one component. */
+  socketComp: Map<string, number>;
   win: boolean;
   breach: BreachMat;
   dark?: number;
@@ -236,11 +238,14 @@ function parse(src: TemplateSrc, rows: string[], orient: string, rotated: boolea
       continue;
     }
     // against-wall props face away from the wall
-    if (p.y === 0) p.facing = 0;
+    const vertical = p.fw < p.fh;
+    if (vertical && p.x === 0) p.facing = 1;
+    else if (vertical && p.x + p.fw === w) p.facing = 3;
+    else if (p.y === 0) p.facing = 0;
     else if (p.y + p.fh === h) p.facing = 2;
     else if (p.x === 0) p.facing = 1;
     else if (p.x + p.fw === w) p.facing = 3;
-    else if (p.fw < p.fh) p.facing = 1;
+    else if (vertical) p.facing = 1;
     else p.facing = 0;
   }
   // Sockets.
@@ -255,14 +260,58 @@ function parse(src: TemplateSrc, rows: string[], orient: string, rotated: boolea
   for (const [side, n] of sides) for (let k = 0; k < n; k++) {
     if (socketApron(side, k, w, h).every(([x, y]) => clear(x, y))) sockets.add(side + k);
   }
+  // 2x2-body connectivity between sockets (slots count as blocked, so slot fills can never cut a corridor).
+  const slotSet = new Set(slots.map((sl) => sl.y * w + sl.x));
+  const freeT = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && clear(x, y) && !slotSet.has(y * w + x);
+  const anchor = (x: number, y: number) => freeT(x, y) && freeT(x + 1, y) && freeT(x, y + 1) && freeT(x + 1, y + 1);
+  const compOf = new Int16Array(w * h).fill(-1);
+  let nComp = 0;
+  const flood = (sx: number, sy: number) => {
+    const st = [sy * w + sx]; compOf[sy * w + sx] = nComp;
+    while (st.length) {
+      const i = st.pop()!; const x = i % w, y = (i / w) | 0;
+      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w - 1 || ny >= h - 1) continue;
+        const j = ny * w + nx;
+        if (compOf[j] < 0 && anchor(nx, ny)) { compOf[j] = nComp; st.push(j); }
+      }
+    }
+    nComp++;
+  };
+  const socketComp = new Map<string, number>();
+  for (const sk of [...sockets]) {
+    const side = sk[0] as 'N' | 'E' | 'S' | 'W', k = +sk.slice(1);
+    const c0 = k * CELL + 2;
+    const anchors: [number, number][] = side === 'N' ? [[c0, 0], [c0 + 1, 0]] : side === 'S' ? [[c0, h - 2], [c0 + 1, h - 2]]
+      : side === 'W' ? [[0, c0], [0, c0 + 1]] : [[w - 2, c0], [w - 2, c0 + 1]];
+    let comp = -1;
+    for (const [ax, ay] of anchors) {
+      if (!anchor(ax, ay)) continue;
+      if (compOf[ay * w + ax] < 0) flood(ax, ay);
+      comp = compOf[ay * w + ax];
+      break;
+    }
+    if (comp < 0) sockets.delete(sk); else socketComp.set(sk, comp);
+  }
   return {
     id: src.id + '/' + orient, baseId: src.id, kind: src.kind, themes: src.themes ?? null,
-    cw, ch, w, h, tiles, mat, props: kept, slots, spawns, reward, lights, sockets,
+    cw, ch, w, h, tiles, mat, props: kept, slots, spawns, reward, lights, sockets, socketComp,
     win: src.win ?? !NO_WINDOWS.includes(src.kind),
     breach: src.breach ?? DEFAULT_BREACH[src.kind] ?? 'plaster',
     dark: src.dark, sprinklers: src.sprinklers, mat0: src.mat, weight: src.weight ?? 1,
   };
   void rotated; void mirrored;
+}
+
+/** True if the template can host doors on all these sockets with a 2-tile corridor between them. */
+export function socketsFit(t: Tpl, req: Iterable<string>): boolean {
+  let c = -2;
+  for (const s of req) {
+    const k = t.socketComp.get(s);
+    if (k === undefined) return false;
+    if (c === -2) c = k; else if (c !== k) return false;
+  }
+  return true;
 }
 
 /** Expand an authored template into all its distinct orientations. */

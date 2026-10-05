@@ -1,10 +1,12 @@
 // CHARACTER ART CONTRACT (spec 5.3, 9.1). Procedural modular pixel characters.
 // Implementation: 2 base rigs × 3 builds; ≤6 layers (body, outfit, head, hair, accessory, anchor item);
 // all animations shared per rig; each individual baked into a runtime atlas when spawned (spec 10.1).
+// The implementation lives in src/art/chars/ (see chars/index.ts for the reusable humanoid helpers).
 import type { Rng } from '../core/rng';
 import type { ArchetypeId, PlayerRoleId, Tier } from '../data/ids';
 import type { Ctx } from '../render/canvas';
-import { makeCanvas, ctx2d, ellipse, rect } from '../render/canvas';
+import { rollLookImpl } from './chars/look';
+import { bakeImpl, portraitLarge, BakedCharacterEx } from './chars/bake';
 
 export type AnimName =
   | 'idle' | 'walk' | 'run' | 'attack1' | 'attack2' | 'attack3' | 'heavy' | 'throw' | 'cast'
@@ -69,28 +71,45 @@ export interface BakedCharacter {
 
 export interface LookSpec { kind: CharacterLook['kind']; archetype?: ArchetypeId; role?: PlayerRoleId; tier?: Tier; }
 
-// ----------------------------------------------------------------------------
-// Placeholder implementation (replaced by the art module). Keeps the game runnable.
+/**
+ * Roll a new individual. Deterministic for a given Rng state; every choice is stored in
+ * look.layers (JSON-serialisable). layers.act (1–4) drives the indoctrination escalation and
+ * defaults to archetype act + tier; override with withAct(look, act) from './chars'.
+ */
 export function rollLook(spec: LookSpec, rng: Rng): CharacterLook {
-  return { kind: spec.kind, archetype: spec.archetype, role: spec.role, tier: spec.tier ?? 0, rig: rng.chance(0.5) ? 'A' : 'B', build: rng.pick(['slim', 'average', 'heavy'] as const), seed: rng.nextU32(), layers: {} };
+  return rollLookImpl(spec, rng);
 }
 
+// ---- bake cache (keyed on the look; LRU so long sessions don't grow without bound) ----
+const CACHE_MAX = 32;
+const cache = new Map<string, BakedCharacterEx>();
+
+function stable(v: unknown): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+  const o = v as Record<string, unknown>;
+  return '{' + Object.keys(o).filter((k) => o[k] !== undefined).sort().map((k) => JSON.stringify(k) + ':' + stable(o[k])).join(',') + '}';
+}
+
+/** Cache key for a look (stable key order, so looks reloaded from disk hit the cache). */
+export function lookKey(look: CharacterLook): string { return stable(look); }
+
+/** Bake (or fetch from cache) every frame of one individual into an atlas. ~5–10 ms on desktop. */
 export function bakeCharacter(look: CharacterLook): BakedCharacter {
-  const col = look.kind === 'player' ? '#3a6ea5' : '#a5503a';
-  const portrait = makeCanvas(24, 24);
-  rect(ctx2d(portrait), 6, 4, 12, 16, col);
-  const gib = makeCanvas(6, 6);
-  rect(ctx2d(gib), 0, 0, 6, 6, col);
-  return {
-    look, height: 30, shadowW: 12, portrait, gibs: [gib, gib, gib, gib, gib, gib],
-    draw(g, _anim, _dir, _t, x, y, o) {
-      g.globalAlpha = o?.alpha ?? 1;
-      ellipse(g, x, y - 1, 6, 2, 'rgba(0,0,0,0.3)');
-      rect(g, x - 6, y - 26, 12, 26, o?.flash ? '#fff' : col);
-      rect(g, x - 4, y - 32, 8, 8, '#e8b996');
-      g.globalAlpha = 1;
-    },
-    duration: () => 0.6,
-    hand: (_a, dir) => ({ x: dir === 3 ? -6 : 6, y: -14, behind: dir === 2 }),
-  };
+  const key = lookKey(look);
+  const hit = cache.get(key);
+  if (hit) { cache.delete(key); cache.set(key, hit); return hit; }
+  const b = bakeImpl(look);
+  cache.set(key, b);
+  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value as string);
+  return b;
+}
+
+/** Drop a baked character from the cache (e.g. a Terminated promoted enemy). */
+export function releaseCharacter(look: CharacterLook): void { cache.delete(lookKey(look)); }
+export function clearCharacterCache(): void { cache.clear(); }
+
+/** Larger head-and-shoulders portrait for intro cards (e.g. size 64 → 64×64 canvas). */
+export function drawPortraitLarge(look: CharacterLook, size = 64): HTMLCanvasElement {
+  return portraitLarge(look, size);
 }

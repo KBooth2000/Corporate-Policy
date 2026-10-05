@@ -86,7 +86,7 @@ export const PROP_INFO: Record<PropKind, PropInfo> = {
   cable_run: { fw: 1, fh: 1, solid: false, hazard: true, stretchy: true },
   socket: { fw: 1, fh: 1, cw: 6, ch: 6, solid: false, hazard: true },
   photocopier: { fw: 2, fh: 1, solid: true, exec: 'photocopier', cover: true },
-  server_rack: { fw: 1, fh: 1, solid: true, hazard: true, exec: 'server_rack', cover: true },
+  server_rack: { fw: 1, fh: 1, solid: true, exec: 'server_rack', cover: true },
   shredder: { fw: 1, fh: 1, cw: 12, ch: 8, solid: true, exec: 'shredder' },
   microwave: { fw: 1, fh: 1, solid: true, exec: 'microwave' },
   hand_dryer: { fw: 1, fh: 1, solid: false, exec: 'hand_dryer', wall: true },
