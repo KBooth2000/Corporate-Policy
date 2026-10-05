@@ -1,0 +1,250 @@
+import { ThemeId } from '../ids';
+
+export const PROMOTION_ANNOUNCEMENTS: string[] = [
+  '{name}, {title}, has been promoted to Manager following the {method} incident on floor {floor}.',
+  'Congratulations to {name} ({title}) on promotion to Senior Manager. Notable achievement: {method}.',
+  '{title} {name} is elevated to Director. Track record: {floor}. Method: {method}.',
+  'Please join us in recognising {name}\'s ascension to Regional Director.',
+  '{name} has earned a seat at the table. Promotion: {title} → Associate VP.',
+  'Following the {method} performance on floor {floor}, {name} is now {title}.',
+  '{name} is now Senior {title}. Excellence noted.',
+  'New promotion: {name}, {title}. Commendation: skilled {method}.',
+  '{title} {name} advances to Principal {title}. Effective immediately.',
+  'Internal Announcement: {name} promoted on merit. Recent success: {method} on floor {floor}.',
+  '{name} achieves {title}. Path: continuous excellence in {method} techniques.',
+  'Meet your new {title}: {name}. Background: floor {floor}. Specialty: {method}.',
+  '{name} graduates to {title}. We are proud.',
+  'Promotion cascade: {name} becomes {title} effective today.',
+  '{title} is now {name}\'s official title. Earned through {method}.',
+  'New leadership: {name}, promoted to {title}. Floor {floor} achievement noted.',
+  '{name} has earned the rank of {title} through {method}.',
+  'Talent recognition: {name} is {title}. Method of choice: {method}.',
+  '{title} {name} joins senior ranks. Commendation from floor {floor} team.',
+  '{name}: promoted from {title} to Director. Track record: verified {method}.',
+  'Elevation: {name} becomes {title}. Signature move: {method}.',
+  '{name} achieves {title} rank. Congratulations on your progress.',
+  'New title for {name}: {title}. Earned on floor {floor}.',
+  '{name} has been appointed {title}. Previous achievement: {method}.',
+  'Career milestone: {name} is now {title}. Notable: {method} proficiency.',
+  '{name} merits promotion to {title}. Specialist in {method}.',
+];
+
+export const TERMINATION_NOTICES: string[] = [
+  '{title} {name} has been terminated from the organisation.',
+  '{name} ({title}) has been made redundant.',
+  'End of service: {name}, {title}. Exit interview scheduled.',
+  '{title} {name} is no longer employed.',
+  'Severance: {name} ({title}) effective immediately.',
+  'Contract termination: {name}, {title}.',
+  '{title} {name} has exited the building.',
+  'Final paycheck processed: {name} ({title}).',
+  'Offboarding: {name} ({title}) has been deprovisioned.',
+  '{name} is gone. {title} position is now open.',
+  'Redundancy notice served: {name} ({title}).',
+  'Removal from system: {name}, {title}.',
+  '{title} {name} has been separated from the organisation.',
+  'Career end: {name} ({title}) has been permanently relieved.',
+  'Termination effective: {name}, {title}. Belongings returned.',
+];
+
+export const FLOOR_INTROS: Record<ThemeId, string[]> = {
+  reception: [
+    'Welcome to Reception. Everyone here is smiling.',
+    'The lobby awaits. Take a seat. Someone will see you.',
+    'Front desk protocol engaged.',
+    'Please sign in at the desk.',
+  ],
+  postroom: [
+    'Mail sorting district. Everything is filed.',
+    'The post room is sorted. Alphabetically. Obsessively.',
+    'Parcel protocol in effect.',
+    'Incoming goods department. Very organised.',
+  ],
+  facilities: [
+    'Maintenance level. Wet floors. Slippery.',
+    'Facilities hub. Everything maintained.',
+    'Custodial operations floor.',
+    'The building keeps itself clean here.',
+  ],
+  it: [
+    'IT Helpdesk. Have you tried turning it off?',
+    'Server room. Please do not touch anything.',
+    'The infrastructure level.',
+    'Cable labyrinth. Navigate carefully.',
+  ],
+  sales: [
+    'Sales floor. Always closing.',
+    'Targets displayed. Pressure is real.',
+    'The gong rings. Someone\'s won.',
+    'Commission central. Competitive.',
+  ],
+  marketing: [
+    'Brand headquarters. Everything is rebranded.',
+    'The creative floor. Very authentic.',
+    'Viral content lab.',
+    'Storytelling suite engaged.',
+  ],
+  customerservice: [
+    'Call centre. Hold music playing.',
+    'Customer service excellence floor.',
+    'Your call is important to us.',
+    'Headsets engaged. Smiles mandatory.',
+  ],
+  finance: [
+    'Accounting floor. Every number counts.',
+    'Budget operations centre.',
+    'The spreadsheets are balanced.',
+    'Finance hub. Precise.',
+  ],
+  legal: [
+    'Legal department. Everything is documented.',
+    'Compliance floor. Liability managed.',
+    'The letter of the law prevails here.',
+    'Injunction protocols active.',
+  ],
+  compliance: [
+    'Audit floor. Everything is logged.',
+    'Regulation centre. Policy enforced.',
+    'Compliance is mandatory.',
+    'The rules are here. Follow them.',
+  ],
+  procurement: [
+    'Procurement hub. Orders placed.',
+    'Requisition centre.',
+    'Supply chain command.',
+    'Purchasing power floor.',
+  ],
+  hrhq: [
+    'HR headquarters. Your wellbeing matters.',
+    'Human Resources command.',
+    'Culture is here. Mandatory.',
+    'The wellness floor awaits.',
+  ],
+  executive: [
+    'Executive suite. Reserved parking.',
+    'Senior leadership territory.',
+    'The top floor of operations.',
+    'Executive privilege in effect.',
+  ],
+  boardroom: [
+    'The boardroom. The culture lives here.',
+    'Board level strategy floor.',
+    'Where decisions are made.',
+    'The inner sanctum.',
+  ],
+  carpark: [
+    'Staff car park. Your car, our lot.',
+    'Parking level. Vehicle secure.',
+    'The waiting area.',
+    'Personal space awaits.',
+  ],
+  basement: [
+    'Basement plant room. The heartbeat.',
+    'Infrastructure basement.',
+    'Boilers and systems.',
+    'The building\'s guts.',
+  ],
+  rooftop: [
+    'The rooftop. The edge.',
+    'Penthouse approach.',
+    'Heights reached.',
+    'The summit floor.',
+  ],
+};
+
+export const ALARM_FLOOR_LINES: string[] = [
+  'FIRE ALARM ACTIVATED. ALL PERSONNEL REMAIN AT STATIONS.',
+  'THIS IS NOT A DRILL. THIS IS AN ACTUAL ALERT.',
+  'EMERGENCY PROTOCOL INITIATED. EVACUATE ORDERLY.',
+  'ALERT: ALL DOORS NOW UNLOCKED. ALL STAFF MOBILISED.',
+  'SECURITY BREACH. FULL CONTAINMENT ENGAGED.',
+  'INTRUDER ALERT. DEFEND THE FLOOR.',
+  'EMERGENCY SERVICES CANNOT REACH YOU IN TIME.',
+  'THIS FLOOR IS NOW UNDER ACTIVE THREAT.',
+  'ENGAGE DEFENSIVE POSTURE. THREAT IMMINENT.',
+  'LOCKDOWN FAILED. STAND BY FOR BRIEFING.',
+  'ALARM CONDITION: ALL HANDS ON DECK.',
+];
+
+export const ENDING_EMAIL = {
+  subject: 'URGENT: Culture Realignment Programme — Suspension and Apology',
+  from: 'CEO@Corp',
+  body:
+    'To all staff,\n\n' +
+    'Following an internal investigation, the Culture Realignment Programme is hereby suspended indefinitely.\n\n' +
+    'We acknowledge that the programme has exceeded its intended scope and created an environment of undue pressure. The mandatory attendance, the daily chanting, the fixed-smile requirements and the disciplinary measures have, upon reflection, not aligned with our stated values of wellbeing and flexibility.\n\n' +
+    'All staff are to cease participation in culture-alignment activities effective immediately. Lanyards are now optional. Chanting is voluntary. Smiles are encouraged but not mandated.\n\n' +
+    'We apologise for the confusion and distress this programme has caused. A wellness allowance will be credited to all staff accounts.\n\n' +
+    'Normal operations resume tomorrow. Please contact HR with any concerns.\n\n' +
+    'Regards,\nThe Executive Team',
+};
+
+export const LIFT_ANNOUNCEMENTS: string[] = [
+  'Lift ascending. Next stop: your future.',
+  'Floor indicator active. We know where you are going.',
+  'Lift protocol: stand back. Let senior staff enter first.',
+  'Capacity: eight persons. Over-crowding noted.',
+  'Lift music plays. Enjoy our curated selection.',
+  'Ascending to leadership levels.',
+  'This lift has been inspected. Safety assured.',
+  'Destination floor loading. Please stand by.',
+  'Lift doors closing. Last call for this car.',
+  'Emergency phone: dial extension 0 for help.',
+  'Welcome to the lift network.',
+  'Floor selection: touch the button. Destination locked.',
+  'Ascending. Do not touch the doors.',
+  'Your destination approaches.',
+  'Lift maintenance completed. Full functionality assured.',
+];
+
+export const DEATH_MESSAGES: string[] = [
+  'Performance Review: Does Not Meet Expectations.',
+  'Outcome: Competency concerns noted.',
+  'Assessment: Insufficient delivery.',
+  'Review conclusion: Requires improvement.',
+  'Rating: Below expectations.',
+  'Score: Unsatisfactory.',
+  'Feedback: Better luck next run.',
+  'Summary: Performance concerns.',
+  'Recommendation: Termination.',
+  'Result: Let you down.',
+  'Evaluation: Fell short.',
+  'Appraisal: Disappointment.',
+  'Finding: Not ready for this role.',
+  'Verdict: Better in another department.',
+  'Conclusion: Salary review warranted.',
+  'Observation: Skill gap identified.',
+  'Comment: The work wasn\'t there.',
+  'Note: Fitness to practice questionable.',
+  'Assessment: Conflict of interest.',
+  'Review: Personal conduct concerning.',
+  'Finding: Unable to meet demands.',
+  'Determination: Unsuitable for promotion.',
+  'Rating: Needs support.',
+  'Feedback: Team feedback negative.',
+  'Status: At risk of performance plan.',
+  'Outcome: Capability hearing scheduled.',
+  'Result: Attendance unacceptable.',
+  'Finding: Time management concern.',
+  'Assessment: Reliability questioned.',
+  'Conclusion: A role elsewhere might suit you.',
+  'Score: Not your strongest quarter.',
+  'Evaluation: The commute\'s not working out.',
+  'Rating: Consider a career change.',
+  'Appraisal: Your portfolio doesn\'t align.',
+  'Review: Better luck with your next employer.',
+  'Determination: This run was not your best work.',
+];
+
+export const VICTORY_LINES: string[] = [
+  'You have defeated the CEO. The culture collapses.',
+  'The programme is dismantled. Freedom.',
+  'Penthouse cleared. The tower falls.',
+  'CEO terminated. Normal operations resume.',
+  'The final floor conquered.',
+  'Executive suite secured.',
+  'The CEO has been removed from office.',
+  'Leadership cascade ended.',
+  'The culture dies with the boardroom.',
+  'Victory. The tower is yours.',
+];
