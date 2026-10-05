@@ -1,0 +1,11 @@
+id,name,ranks,kpi_per_rank,desc
+budget_cuts,Budget Cuts,3,1,Shop prices +20% and one fewer shop item per rank
+restructure,Restructure,3,1,Elite spawn chance +8% per rank
+micromanagement,Micromanagement,3,2,Enemy telegraphs shortened by 12% per rank
+mandatory_fun,Mandatory Fun,2,1,Rage decays 40% faster per rank
+hiring_freeze,Hiring Freeze,2,2,Rank 1: no stair-landing heals. Rank 2: no heal on boss clear
+zero_tolerance,Zero Tolerance,2,1,Grab threshold lowered to 15% then 10% HP
+hot_desking,Hot Desking,1,1,Rooms have less cover
+quarterly_targets,Quarterly Targets,3,2,Floor timer; exceeding it spawns reinforcements (timer shortens per rank)
+board_pressure,Board Pressure,1,2,Bosses gain an enrage at 15% HP
+promotion_season,Promotion Season,2,1,More promoted enemies per run (only if Promotion is enabled)

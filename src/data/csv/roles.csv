@@ -1,0 +1,6 @@
+id,name,melee,ranged,throwables,hp_mult,rage_fill_mult,shield_regen,ammo_mult,hazard_mult,starts_in_rage,shops,unlock,desc
+office_worker,Office Worker,keyboard,,mug|potted_plant,1,1,1,1,1,0,1,default,Balanced. You read the terms. You declined.
+temp,Temp,letter_opener,,,0.75,1.5,1,1,1,0,1,reach_floor_6,Lower HP. Rage fills 50% faster. Nothing to lose.
+night_cleaner,Night Cleaner,mop,,,1,1,1,1,1.5,0,1,hazard_kills_100,Hazard damage up. Starts with a Facilities Benefit.
+contractor,Contractor,,nail_gun,,1,1,0,1.75,1,0,1,beat_boss_2,No Wellbeing regeneration. Extra ammunition.
+ex_employee,Ex-Employee,fists,,,1,1,1,1,1,1,0,beat_ceo,Bare fists. Starts in Rage on every floor. No shops.

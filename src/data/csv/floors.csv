@@ -1,0 +1,5 @@
+act,first_floor,last_floor,boss_floor,telegraph_min,elite_room_chance,lift_ambush_chance,alarm_chance,pool_current,pool_earlier
+1,1,5,5,0.40,0,0.25,0.2,1,0
+2,6,10,10,0.35,0.10,0.25,0.2,0.7,0.3
+3,11,15,15,0.30,0.10,0.25,0.2,0.7,0.3
+4,16,20,20,0.25,0.10,0.25,0.2,0.7,0.3

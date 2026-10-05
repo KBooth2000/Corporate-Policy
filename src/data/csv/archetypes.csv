@@ -1,0 +1,21 @@
+id,name,role,cost,from_floor,act,hp,speed,damage,attack_range,elite_only,anchor
+intern,Intern,swarmer,1,1,1,22,62,6,18,0,Oversized lanyard and coffee run tray
+receptionist,Receptionist,ranged,2,1,1,28,48,7,150,0,Headset
+caretaker,Caretaker,bruiser,3,2,1,70,40,12,36,0,Mop and hi-vis
+it_tech,IT Technician,disruptor,3,3,1,38,54,7,110,0,Cable reel and 'have you tried turning it off' T-shirt
+fire_warden,Fire Warden,elite,6,3,1,120,52,13,60,1,Hi-vis vest and whistle
+sales_rep,Sales Rep,swarmer,2,6,2,32,74,9,22,0,Gilet and energy drink
+marketing_exec,Marketing Exec,support,3,6,2,40,52,6,140,0,Branded tote and oat latte
+call_centre,Call Centre Agent,ranged,3,7,2,38,50,8,130,0,Headset and script binder
+team_leader,Team Leader,bruiser,4,8,2,95,44,14,32,0,Clipboard and badge-covered lanyard
+employee_of_month,Employee of the Month,elite,7,6,2,170,60,15,40,1,Framed certificate
+accountant,Accountant,ranged,3,11,3,44,46,11,170,0,Calculator and cardigan
+lawyer,Lawyer,disruptor,4,11,3,58,50,10,120,0,Briefcase
+compliance_officer,Compliance Officer,bruiser,4,12,3,110,42,16,34,0,Giant policy binder
+procurement_buyer,Procurement Buyer,support,4,13,3,52,48,8,140,0,Purchase-order pad
+auditor,Auditor,elite,8,11,3,210,54,17,150,1,Magnifying glass and red pen
+hr_partner,HR Business Partner,support,5,16,4,64,52,9,150,0,Wellbeing lanyard and mindfulness app
+svp,Senior Vice President,bruiser,5,16,4,150,46,20,40,0,Golf club and quarter-zip
+exec_assistant,Executive Assistant,disruptor,5,17,4,62,70,16,24,0,Tablet and two phones
+consultant,Management Consultant,ranged,4,16,4,58,50,10,190,0,Laser pointer and slide clicker
+culture_champion,Culture Champion,elite,10,16,4,260,54,18,60,1,Company values sash

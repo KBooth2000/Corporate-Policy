@@ -1,0 +1,12 @@
+item,min,max,notes
+benefit_standard,120,120,Canteen Benefit (Standard)
+benefit_enhanced,150,150,Canteen Benefit (Enhanced)
+benefit_executive,180,180,Canteen Benefit (Executive)
+desk_item,150,250,By item tier
+weapon,60,120,By weapon rarity
+full_heal,90,90,
+weapon_repair,40,40,
+reroll_base,30,30,
+reroll_step,30,30,Added per reroll in the same shop
+snack,15,25,Vending machine small heal
+vending_throwable,10,20,Vending machine throwable

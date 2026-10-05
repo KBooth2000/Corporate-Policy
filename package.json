@@ -1,0 +1,30 @@
+{
+  "name": "company-policy",
+  "version": "1.0.0",
+  "description": "Company Policy - a top-down corporate-satire action roguelike",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "soak": "node --experimental-strip-types tools/soak.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KBooth2000/Office_Game.git"
+  },
+  "author": "Kallum Booth",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/KBooth2000/Office_Game/issues"
+  },
+  "homepage": "https://github.com/KBooth2000/Office_Game#readme",
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "playwright-core": "^1.63.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
+  },
+  "private": true,
+  "type": "module"
+}
