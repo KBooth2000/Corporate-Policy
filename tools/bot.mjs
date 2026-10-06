@@ -100,12 +100,25 @@ await page.evaluate(({ god, speed }) => {
 const t0 = Date.now();
 let last = '';
 let menuTicks = 0;
+let stuckN = 0;
 while ((Date.now() - t0) / 1000 < +seconds) {
   await page.waitForTimeout(5000);
   const s = await page.evaluate(() => { const a = window.__cp.app; const top = a.top; return { scene: top?.name, floor: top?.run?.floor, type: top?.plan?.floor_type, hp: top?.player ? Math.round(top.player.hp) : null, enemies: top?.world?.totalLiveEnemies?.(), cleared: top?.world?.floorCleared, rooms: top?.world?.rooms?.filter(r=>!r.cleared).length, kills: top?.run?.log?.kills }; });
   const line = JSON.stringify(s);
   console.log(Math.round((Date.now() - t0) / 1000) + 's', line);
-  if (line === last) { console.log('!! no change in 5s'); await page.screenshot({ path: `scratch/bot-stuck-${Date.now()}.png` }); }
+  if (line === last) {
+    stuckN++;
+    console.log('!! no change in 5s');
+    if (stuckN === 4) {
+      await page.screenshot({ path: `scratch/bot-stuck-${Date.now()}.png` });
+      const diag = await page.evaluate(() => { const s = window.__cp.app.top, w = s.world, p = s.player, T = 16; if (!w) return null;
+        return { p: [p.x | 0, p.y | 0], room: w.currentRoom, inCombat: w.inCombat, cut: !!w.cutscene, melee: s.run.loadout.melee?.id ?? null, grabbing: !!p.grabbing, frozen: p.frozen, stun: p.status.stun,
+          rooms: w.rooms.map((r, i) => ({ i, k: r.def.kind, e: r.entered, l: r.locked, c: r.cleared, live: w.liveEnemies(i) })).filter((r) => !r.c),
+          en: w.actors.filter((a) => a.team === 'enemy' && a.alive).map((e) => ({ a: e.archetype, x: e.x | 0, y: e.y | 0, room: e.roomId, at: w.roomAt(e.x, e.y), flow: w.flow[(e.y / T | 0) * w.map.w + (e.x / T | 0)], grab: !!e.grabbedBy, thrown: !!e.thrown, stuck: e.__stuck, coll: w.collides(e) })),
+          doors: w.doors.filter((d) => d.state !== 'open').map((d) => d.def.roomA + '-' + d.def.roomB + ':' + d.state) }; });
+      console.log('DIAG', JSON.stringify(diag));
+    }
+  } else stuckN = 0;
   last = line;
   if (s.floor >= +maxFloor && s.cleared) break;
   if (s.scene !== 'gameplay' && s.scene !== 'transition') {
