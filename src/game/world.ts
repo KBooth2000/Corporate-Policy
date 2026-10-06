@@ -56,6 +56,8 @@ export function registerProp(kind: PropKind | PropKind[], b: PropBehaviour): voi
 export interface Cutscene {
   /** Return true when finished. */
   update(dt: number): boolean;
+  /** Called if another cutscene replaces this one before it finished: must leave the world consistent. */
+  abort?(): void;
   /** World-space overlay drawing. */
   render?(g: Ctx): void;
   /** Screen-space overlay drawing (letterbox, captions). */
@@ -114,7 +116,14 @@ export class World {
   player!: Actor;
   currentRoom = -1;
   activeRooms = new Set<number>();
-  cutscene: Cutscene | null = null;
+  private _cutscene: Cutscene | null = null;
+  /** Active cutscene. Replacing one that is still running aborts it cleanly first (executions restore + kill their victim). */
+  get cutscene(): Cutscene | null { return this._cutscene; }
+  set cutscene(c: Cutscene | null) {
+    const cur = this._cutscene;
+    if (cur && c && cur !== c) cur.abort?.();
+    this._cutscene = c;
+  }
   floorCleared = false;
   /** Bosses/scripted floors hold the clear until they finish. */
   holdClear = false;
@@ -679,6 +688,8 @@ export class World {
       return false;
     };
     for (const a of this.actors) {
+      // stale grab (grabber no longer holding it and no cutscene running): release
+      if (a.grabbedBy && (a.grabbedBy as any).grabbing !== a && !this.cutscene) a.grabbedBy = null;
       if (a.team !== 'enemy' || !a.alive || a.grabbedBy || a.thrown || (a as any).isBoss || (a as any).noUnstick) continue;
       const rid = this.roomAt(a.x, a.y);
       const live = this.inCombat && (this.alarm || rid === this.currentRoom || (rid >= 0 && this.rooms[rid]?.locked));

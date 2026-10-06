@@ -177,6 +177,9 @@ class Kit {
     return false;
   }
 
+  /** Replaced by another cutscene: finish immediately so the victim is restored and dies (no hidden live enemies). */
+  abort(): void { if (!this.done) { this.done = true; this.close(); } }
+
   private close(): void {
     const { w, pl, vc } = this;
     this.loop?.stop(0.05);

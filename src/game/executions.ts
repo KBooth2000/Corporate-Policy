@@ -72,7 +72,10 @@ export const genericExecution: ExecutionImpl = {
     const sx = victim.x, sy = victim.y;
     player.setAnim('exec_slam', true);
     victim.setAnim('victim_slam', true);
+    let finished = false;
+    const end = () => { if (!finished) { finished = true; done(); } };
     return {
+      abort: end,
       camera: full ? { x: (player.x + tx) / 2, y: (player.y + ty) / 2 - 8 } : undefined,
       zoom: full ? 1.6 : 1,
       update(dt) {
@@ -91,7 +94,7 @@ export const genericExecution: ExecutionImpl = {
           if (target.type === 'shredder' || target.type === 'defenestration') { if (victim.baked) gibBurst(w.particles, victim.baked.gibs, tx, ty, 0, w.roomAt(tx, ty), 0.6); victim.dismembered = true; }
           w.hitstop = 0.12;
         }
-        if (t >= dur) { done(); return true; }
+        if (t >= dur) { end(); return true; }
         return false;
       },
       renderScreen(g) {
