@@ -59,6 +59,11 @@ await page.evaluate(({ god, speed }) => {
     let target = null, bd = 1e9;
     for (const a of w.actors) { if (a.team !== 'enemy' || !a.alive || a.grabbedBy) continue; const pd = pathD(a.x, a.y); if (pd < 0) continue; if (pd < bd) { bd = pd; target = a; } }
     if (target) bd = Math.hypot(target.x - p.x, target.y - p.y);
+    // re-arm: grab a weapon when fighting barehanded (enemies drop theirs, spec 5.4)
+    if (!s.run.loadout.melee && (!target || bd > 40)) {
+      const wp = w.interactables.find((i) => i.enabled() && /^Take /.test(i.label) && i.priority === 0 && Math.hypot(i.x - p.x, i.y - p.y) < 140 && !st.black?.has(i.label + (i.x | 0)));
+      if (wp) { if (Math.hypot(wp.x - p.x, wp.y - p.y) < 14) press('interact'); else goTo(wp.x, wp.y); return; }
+    }
     if (target) {
       c.aimDir = { x: target.x - p.x, y: target.y - 12 - p.y + 12 };
       if (p.grabCandidate && Math.random() < 0.3) { press('grab'); return; }
@@ -68,7 +73,9 @@ await page.evaluate(({ god, speed }) => {
     }
     // pick up nearby reward/weapon/interactables (rewards first)
     const its = w.interactables.filter((i) => i.enabled());
-    const reward = its.find((i) => i.priority === 1 && /^Take/.test(i.label));
+    st.black ??= new Set();
+    const reward = its.find((i) => i.priority === 1 && /^Take/.test(i.label) && !st.black.has(i.label + (i.x | 0)));
+    if (reward) { const key = reward.label + (reward.x | 0); if (st.tKey !== key) { st.tKey = key; st.tStart = s.world.time; } else if (s.world.time - st.tStart > 8) { st.black.add(key); } }
     if (reward) { if (Math.hypot(reward.x - p.x, reward.y - p.y) < 14) press('interact'); else goTo(reward.x, reward.y); return; }
     if (!w.floorCleared) {
       // walk to the nearest uncleared room
