@@ -9,7 +9,7 @@ import { Projectile } from '../projectile';
 import type { ArchetypeId, Tier } from '../../data/ids';
 import {
   define, P, approach, kite, behindAllies, go, pathDir, sayIf, swing, burst, shoot, startDash, runDash, zones, lineHit,
-  callout, ring, summon, liveSummons, summonSpot, dist, angleTo, angleDiff, clamp, fromAngle, gate,
+  callout, ring, summon, roomAtCap, liveSummons, summonSpot, dist, angleTo, angleDiff, clamp, fromAngle, gate,
 } from './common';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -282,7 +282,7 @@ define('procurement_buyer', {
         burst(e, {
           x: at.x, y: at.y, r: 12, windup: 0.8, damage: e.arch.damage * 0.6, knockback: 120, busy: false,
           onFire: (x, y) => {
-            if (liveSummons(e, 'order').length >= MAX_ORDERED) return;
+            if (liveSummons(e, 'order').length >= MAX_ORDERED || roomAtCap(e)) return;
             debrisBurst(w.particles, x, y - 4, 8, ['#b08850', '#8a6438', '#d8c8a0'], w.roomAt(x, y));
             smokePuff(w.particles, x, y - 4, 6, '#d0d4dc', 5);
             audio.sfx('thud', { x, y, vol: 0.6 });

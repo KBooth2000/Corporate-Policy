@@ -7,7 +7,7 @@ import { smokePuff } from '../fx';
 import type { Tier } from '../../data/ids';
 import {
   define, P, approach, kite, behindAllies, go, allies, addBuff, sayIf, swing, burst, shoot, startDash, runDash,
-  callout, ring, beamFx, summon, liveSummons, summonSpot, dist, angleTo, TAU, clamp,
+  callout, ring, beamFx, summon, roomAtCap, liveSummons, summonSpot, dist, angleTo, TAU, clamp,
 } from './common';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -193,6 +193,7 @@ function delegate(e: Enemy, text: string): void {
   callout(w, 'DELEGATING…', '#8ac0ff', e);
   e.bark('buff', text);
   for (let i = 0; i < n; i++) {
+    if (roomAtCap(e)) break;
     const at = summonSpot(e, e, 60);
     smokePuff(w.particles, at.x, at.y - 6, 8, '#d0d4dc', 6);
     const s = summon(e, 'intern', internTier(e), at.x, at.y, 'delegate');

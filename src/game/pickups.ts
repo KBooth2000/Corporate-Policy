@@ -1,3 +1,4 @@
+import { fxRng } from '../core/rng';
 // Pickups: weapons (interact to swap), petty cash, heals, ammo, intel files, rewards.
 import { Entity } from './entity';
 import type { Ctx, Sprite } from '../render/canvas';
@@ -95,7 +96,7 @@ export class Pickup extends Entity {
     switch (o.kind) {
       case 'weapon': {
         const old: WeaponInst | null = p.equip(o.weapon!);
-        if (old) this.world.add(new Pickup({ kind: 'weapon', weapon: old, x: p.x, y: p.y + 6, vx: (Math.random() - 0.5) * 60, vy: 30 }));
+        if (old) this.world.add(new Pickup({ kind: 'weapon', weapon: old, x: p.x, y: p.y + 6, vx: fxRng.range(-30, 30), vy: 30 }));
         this.world.bus.emit('pickup', { kind: 'weapon', id: o.weapon!.id });
         break;
       }
@@ -103,7 +104,7 @@ export class Pickup extends Entity {
         const amt = Math.round((o.amount ?? 1) * p.stats.cashMult);
         p.run.pettyCash += amt;
         p.run.log.cashEarned += amt;
-        audio.sfx('pickup_cash', { vol: 0.5, pitch: 0.9 + Math.random() * 0.3 });
+        audio.sfx('pickup_cash', { vol: 0.5, pitch: fxRng.range(0.9, 1.2) });
         this.world.floatText(this.x, this.y - 10, '+£' + amt, '#ffd34d');
         this.world.bus.emit('pickup', { kind: 'cash', amount: amt });
         break;
@@ -161,7 +162,7 @@ export function dropCash(world: any, x: number, y: number, total: number): void 
   while (left > 0) {
     const v = left >= 20 ? 20 : left >= 5 ? 5 : 1;
     left -= v;
-    const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 60;
+    const a = fxRng.range(0, Math.PI * 2), s = fxRng.range(30, 90);
     world.add(new Pickup({ kind: 'cash', amount: v, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s }));
   }
 }

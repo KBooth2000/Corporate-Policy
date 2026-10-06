@@ -1,3 +1,4 @@
+import { fxRng } from '../core/rng';
 // Projectiles: staples, nails, thrown items, enemy shots. Thrown objects arc (z) and spin.
 import { Entity, Actor, DamageInfo } from './entity';
 import type { Ctx, Sprite } from '../render/canvas';
@@ -96,7 +97,7 @@ export class Projectile extends Entity {
       }
     }
     this.rot = this.o.spin ? this.rot + this.o.spin * dt : Math.atan2(this.vy, this.vx);
-    if (this.o.trail && Math.random() < 0.6) w.particles.spawn({ kind: 'pixel', x: this.x, y: this.y - this.z, life: 0.15, col: this.o.trail, size: 1, drag: 0 });
+    if (this.o.trail && fxRng.chance(0.6)) w.particles.spawn({ kind: 'pixel', x: this.x, y: this.y - this.z, life: 0.15, col: this.o.trail, size: 1, drag: 0 });
   }
 
   end(target: Actor | null, wall = false): void {

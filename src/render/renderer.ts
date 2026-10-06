@@ -1,3 +1,4 @@
+import { fxRng } from '../core/rng';
 // Integer-scaled pixel renderer (spec 9.1). Base 640x360; the view extends
 // horizontally up to 21:9 and vertically up to 16:10 so no black bars on Deck/phones.
 import { makeCanvas, ctx2d, Ctx } from './canvas';
@@ -114,8 +115,8 @@ export class Renderer {
       this.shakeT -= dt;
       const m = this.shakeMag * Math.max(0, this.shakeT) * 4;
       const mm = Math.min(m, this.shakeMag);
-      this.shakeX = (Math.random() * 2 - 1) * mm;
-      this.shakeY = (Math.random() * 2 - 1) * mm;
+      this.shakeX = fxRng.range(-mm, mm);
+      this.shakeY = fxRng.range(-mm, mm);
       if (this.shakeT <= 0) { this.shakeX = this.shakeY = 0; this.shakeMag = 0; }
     }
   }

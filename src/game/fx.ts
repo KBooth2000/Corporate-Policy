@@ -161,9 +161,12 @@ export class Decals {
     if (!r) return;
     r.recs.push(d);
     if (r.recs.length > DECAL_CAP) {
-      r.recs.splice(0, Math.floor(DECAL_CAP * 0.25));
+      // spec 4.8: oldest decals fade first — drop the oldest 15% and redraw the next-oldest 35% progressively faded
+      r.recs.splice(0, Math.floor(DECAL_CAP * 0.15));
       r.g.clearRect(0, 0, r.canvas.width, r.canvas.height);
-      for (const q of r.recs) this.draw(r, q);
+      const fadeN = Math.floor(r.recs.length * 0.35);
+      r.recs.forEach((q, i) => { r.g.globalAlpha = i < fadeN ? 0.25 + 0.75 * (i / fadeN) : 1; this.draw(r, q); });
+      r.g.globalAlpha = 1;
     } else this.draw(r, d);
   }
 

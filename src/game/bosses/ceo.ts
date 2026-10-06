@@ -425,7 +425,7 @@ class CEO extends Boss {
       let moved = false;
       const scr = mark(this.map, 'b');
       return {
-        dur: 3.4,
+        dur: 3.0,
         camera: (t) => t < 1.2 ? { x: scr.x, y: scr.y + 40 } : t < 2.3 ? { x: (this.trophies?.def.x ?? this.x), y: (this.trophies?.def.y ?? this.y) + 10 } : { x: this.x, y: this.y - 20 },
         zoom: (t) => t < 1.2 ? 1.25 : 1.15,
         update: (t, dt) => {
@@ -452,7 +452,7 @@ class CEO extends Boss {
     let moved = false, shielded = false;
     const from = { x: this.x, y: this.y };
     return {
-      dur: 3.6,
+      dur: 3.0,
       camera: (t) => t < 1.0 ? { x: this.x, y: this.y - 20 } : { x: lerp(this.heli.x - 60, this.heli.x, clamp((t - 1.6) / 1.5, 0, 1)), y: this.heli.y + 10 },
       zoom: (t) => t < 1.0 ? 1.3 : 1.15,
       update: (t, dt) => {

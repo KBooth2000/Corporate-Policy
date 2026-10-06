@@ -84,6 +84,11 @@ export function composeRoom(rng: Rng, plan: FloorPlan, budget: number, opts: { e
       left -= pick.cost;
     }
   }
+  // spec 5.5: every room has at least 2 different roles — top up single-enemy rooms with a cheap swarmer
+  if (out.length === 1 && !opts.swarmOnly) {
+    const cheap = [...current, ...earlier].filter((a) => a.role !== out[0].arch.role && a.cost <= 2 && a.role !== 'support');
+    if (cheap.length) out.push({ arch: rng.pick(cheap), tier: tierFor(out[0].arch, plan.act) });
+  }
   // guarantee ≥2 roles (spec 5.5) when room has more than one enemy
   if (out.length >= 2 && new Set(out.map((o) => o.arch.role)).size < 2 && !opts.swarmOnly) {
     const alt = [...current, ...earlier].filter((a) => a.role !== out[0].arch.role && a.role !== 'support');

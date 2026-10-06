@@ -494,7 +494,8 @@ export class World {
     for (const e of target.enemies) {
       if (!e.alive) continue;
       (e as any).aware = true;
-      if (dist(e, at) < 90) e.status.stun = Math.max(e.status.stun, 1.2 * stunMult);
+      // spec 4.7: debris stuns the enemies in the adjacent room (longer for those near the impact)
+      e.status.stun = Math.max(e.status.stun, (dist(e, at) < 90 ? 1.2 : 0.7) * stunMult);
     }
     if (!target.cleared && this.liveEnemies(target.def.id) > 0) {
       target.entered = true; target.locked = true;

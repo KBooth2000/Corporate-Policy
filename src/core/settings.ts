@@ -50,7 +50,7 @@ export function defaultSettings(isMobile: boolean): Settings {
     rageAutoTrigger: false,
     subtitles: true,
     subtitleSize: isMobile ? 2 : 1,
-    visualAudioCues: false,
+    visualAudioCues: isMobile, // phones are often played muted (spec 9.3 accessibility)
     volMaster: 0.8, volMusic: 0.7, volSfx: 0.85, volVoice: 0.85,
     uiScale: 1,
     reducedLights: isMobile,

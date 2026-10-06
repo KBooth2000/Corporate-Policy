@@ -21,6 +21,7 @@ import { Projectile } from '../projectile';
 import type { ProjectileKind } from '../../art/items';
 import { T, TILE } from '../world-types';
 import { FLOOR_HOOKS } from '../registry';
+import { MAX_ACTIVE_ENEMIES } from '../../core/app';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Registration wrapper
@@ -496,6 +497,14 @@ export function runDash(e: Enemy, dt: number): boolean {
 
 // ---------------------------------------------------------------------------------------------------------------
 // Summons (Team Leader / Procurement Buyer / promotions)
+/** Spec 4.8 / 10.4: active-enemy cap per room (12 PC / 8 Android) also applies to summons. */
+export function roomAtCap(owner: Enemy): boolean {
+  const w = owner.world;
+  let n = 0;
+  for (const a of w.actors) if (a.team === 'enemy' && a.alive && (a as Enemy).roomId === owner.roomId) n++;
+  return n >= MAX_ACTIVE_ENEMIES;
+}
+
 export function summon(owner: Enemy, archetype: ArchetypeId, tier: Tier, x: number, y: number, tag: string): Enemy {
   const w = owner.world;
   const n = (owner.flags.summonCount = (owner.flags.summonCount ?? 0) + 1);

@@ -2,6 +2,7 @@
 // each phase (the only time a boss can be grabbed), phase-transition executions, 2–3 s arena-change set pieces
 // (world.cutscene: player invulnerable, timers paused), intro cards, adds (≤4, act archetypes), barks, Board
 // Pressure enrage, unique finishers and the reward drop (major upgrade, Desk Item, Annual Leave, full heal).
+import { MAX_ACTIVE_ENEMIES } from '../../core/app';
 import { app } from '../../core/app';
 import type { Ctx } from '../../render/canvas';
 import { drawText, measure, wrap } from '../../render/font';
@@ -254,6 +255,7 @@ export abstract class Boss extends Actor {
   liveAdds(): number { this.adds = this.adds.filter((a) => a.alive); return this.adds.length; }
   spawnAdd(arch: ArchetypeId, at: Vec, tier: 0 | 1 | 2 = 0): Enemy | null {
     if (this.liveAdds() >= 4) return null;
+    if (this.w.actors.filter((a) => a.team === 'enemy' && a.alive).length >= MAX_ACTIVE_ENEMIES) return null; // spec 4.8
     const e = new Enemy({ archetype: arch, tier, act: this.cfg.act, floor: this.s.plan.floor_number, x: at.x, y: at.y, roomId: this.w.roomAt(at.x, at.y) >= 0 ? this.w.roomAt(at.x, at.y) : this.cfg.arenaRoom, rng: this.s.floorRng.spawns.fork(this.adds.length + ':' + this.w.time.toFixed(2)), aware: true, telegraphMult: this.s.spawn?.telegraphMult });
     this.w.add(e);
     this.w.assignToRoom(e, this.cfg.arenaRoom);
