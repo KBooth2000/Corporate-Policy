@@ -381,7 +381,7 @@ export class World {
     }
     this.flowFrom = -1;
     // never seal a door on top of someone: push them out of the door tiles (into the sealed room for the player)
-    if (state !== 'open') for (const a of this.actors) if (a.alive && this.collides(a)) this.depenetrate(a, a === this.player ? roomId : -1);
+    if (state !== 'open') for (const a of this.actors) if (a.alive && this.collides(a)) this.depenetrate(a, a === this.player ? roomId : ((a as any).roomId ?? roomId));
   }
 
   /** Move an actor that is embedded in solid geometry to the nearest free spot (prefer a given room). */
@@ -717,12 +717,15 @@ export class World {
       if (a.grabbedBy && (a.grabbedBy as any).grabbing !== a && !this.cutscene) a.grabbedBy = null;
       if (a.team !== 'enemy' || !a.alive || a.grabbedBy || a.thrown || (a as any).isBoss || (a as any).noUnstick) continue;
       const rid = this.roomAt(a.x, a.y);
-      const live = this.inCombat && (this.alarm || rid === this.currentRoom || (rid >= 0 && this.rooms[rid]?.locked));
+      const home0 = (a as any).roomId as number | undefined;
+      const inEnc = (r: number | undefined) => r !== undefined && r >= 0 && (r === this.currentRoom || !!this.rooms[r]?.locked || this.rooms[this.currentRoom]?.mergedWith === r);
+      // an enemy belongs to its assigned room's encounter even if it wandered outside before the doors sealed
+      const live = this.inCombat && (this.alarm || inEnc(rid) || inEnc(home0));
       const bad = this.collides(a) || (live && !reach(a.x, a.y));
       const st = ((a as any).__stuck = bad ? ((a as any).__stuck ?? 0) + step : 0);
       if (st < 4) continue;
       (a as any).__stuck = 0;
-      const home = rid >= 0 ? rid : (a as any).roomId ?? this.currentRoom;
+      const home = inEnc(home0) ? home0! : rid >= 0 ? rid : home0 ?? this.currentRoom;
       const pts = [...(this.map.rooms[home]?.spawnPoints ?? []), ...(this.map.rooms[this.currentRoom]?.spawnPoints ?? [])].filter((p) => reach(p.x, p.y));
       if (!pts.length) continue;
       pts.sort((p, q) => dist(q, this.player) - dist(p, this.player));
