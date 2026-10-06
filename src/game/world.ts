@@ -380,6 +380,29 @@ export class World {
       }
     }
     this.flowFrom = -1;
+    // never seal a door on top of someone: push them out of the door tiles (into the sealed room for the player)
+    if (state !== 'open') for (const a of this.actors) if (a.alive && this.collides(a)) this.depenetrate(a, a === this.player ? roomId : -1);
+  }
+
+  /** Move an actor that is embedded in solid geometry to the nearest free spot (prefer a given room). */
+  depenetrate(a: Actor, preferRoom = -1): boolean {
+    if (!this.collides(a)) return false;
+    const ox = a.x, oy = a.y;
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let r = 2; r <= 48; r += 2) {
+      for (let k = 0; k < 16; k++) {
+        const ang = (k / 16) * Math.PI * 2;
+        const x = ox + Math.cos(ang) * r, y = oy + Math.sin(ang) * r;
+        a.x = x; a.y = y;
+        if (this.collides(a)) continue;
+        const d = r + (preferRoom >= 0 && this.roomAt(x, y) !== preferRoom ? 100 : 0);
+        if (!best || d < best.d) best = { x, y, d };
+      }
+      if (best && best.d < 100) break;
+    }
+    if (best) { a.x = best.x; a.y = best.y; return true; }
+    a.x = ox; a.y = oy;
+    return false;
   }
 
   /** Register an enemy as belonging to a room (for room-lock clearing). */
@@ -644,6 +667,7 @@ export class World {
     }
     this.separateActors();
     this.unstickEnemies(dt);
+    if (this.player?.alive && !this.player.grabbedBy && this.collides(this.player)) this.depenetrate(this.player, this.currentRoom);
     for (const t of this.telegraphs) t.update(dt);
     this.telegraphs = this.telegraphs.filter((t) => !t.done);
     for (const p of this.props) {
