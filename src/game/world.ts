@@ -633,6 +633,7 @@ export class World {
       e.update(dt);
     }
     this.separateActors();
+    this.unstickEnemies(dt);
     for (const t of this.telegraphs) t.update(dt);
     this.telegraphs = this.telegraphs.filter((t) => !t.done);
     for (const p of this.props) {
@@ -660,6 +661,40 @@ export class World {
     this.subtitles = this.subtitles.filter((s) => s.t > 0);
     for (const b of this.bubbles) b.t -= dt;
     this.bubbles = this.bubbles.filter((b) => b.t > 0 && !b.actor.dead);
+  }
+
+  /**
+   * Softlock guard: an enemy that is embedded in geometry, or unreachable from the player while its room's encounter
+   * is live, for >4 s is relocated to a reachable spawn point (with a puff of smoke). Guarantees floors can always clear.
+   */
+  private unstuckT = 0;
+  private unstickEnemies(dt: number): void {
+    this.unstuckT += dt;
+    if (this.unstuckT < 0.5) return;
+    const step = this.unstuckT; this.unstuckT = 0;
+    const w = this.map.w;
+    const reach = (x: number, y: number) => {
+      const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = this.flow[(ty + dy) * w + tx + dx]; if (v !== undefined && v >= 0) return true; }
+      return false;
+    };
+    for (const a of this.actors) {
+      if (a.team !== 'enemy' || !a.alive || a.grabbedBy || a.thrown || (a as any).isBoss || (a as any).noUnstick) continue;
+      const rid = this.roomAt(a.x, a.y);
+      const live = this.inCombat && (this.alarm || rid === this.currentRoom || (rid >= 0 && this.rooms[rid]?.locked));
+      const bad = this.collides(a) || (live && !reach(a.x, a.y));
+      const st = ((a as any).__stuck = bad ? ((a as any).__stuck ?? 0) + step : 0);
+      if (st < 4) continue;
+      (a as any).__stuck = 0;
+      const home = rid >= 0 ? rid : (a as any).roomId ?? this.currentRoom;
+      const pts = [...(this.map.rooms[home]?.spawnPoints ?? []), ...(this.map.rooms[this.currentRoom]?.spawnPoints ?? [])].filter((p) => reach(p.x, p.y));
+      if (!pts.length) continue;
+      pts.sort((p, q) => dist(q, this.player) - dist(p, this.player));
+      const p = pts[Math.min(pts.length - 1, 1)];
+      smokePuff(this.particles, a.x, a.y - 8, 6, '#d0d4dc', 5);
+      a.x = p.x; a.y = p.y; a.kx = a.ky = 0;
+      smokePuff(this.particles, a.x, a.y - 8, 6, '#d0d4dc', 5);
+    }
   }
 
   private separateActors(): void {
