@@ -14,6 +14,7 @@ await page.evaluate(({ god, speed }) => {
   const W = window;
   const st = (W.__botState = { floors: [], deaths: 0, lastProgress: performance.now(), lastFloor: 0, stuckEvents: [], log: [] });
   const keys = new Set(); const prev = new Set();
+  import('/src/game/weapons.ts').then((m) => { W.__slotOf = m.slotOf; }).catch(() => {});
   const press = (a) => keys.add(a);
   W.__cpBot = (c, s) => {
     const { world: w, player: p } = s;
@@ -61,8 +62,12 @@ await page.evaluate(({ god, speed }) => {
     if (target) bd = Math.hypot(target.x - p.x, target.y - p.y);
     // re-arm: grab a weapon when fighting barehanded (enemies drop theirs, spec 5.4)
     if (!s.run.loadout.melee && (!target || bd > 40)) {
-      const wp = w.interactables.find((i) => i.enabled() && /^Take /.test(i.label) && i.priority === 0 && Math.hypot(i.x - p.x, i.y - p.y) < 140 && !st.black?.has(i.label + (i.x | 0)));
-      if (wp) { if (Math.hypot(wp.x - p.x, wp.y - p.y) < 14) press('interact'); else goTo(wp.x, wp.y); return; }
+      st.black ??= new Set();
+      const wp = w.entities.find((e) => !e.dead && e.o?.kind === 'weapon' && W.__slotOf?.(e.o.weapon.id) === 'melee' && e.z <= 0.5 && Math.hypot(e.x - p.x, e.y - p.y) < 160 && !st.black.has('w' + e.id));
+      if (wp) {
+        const key = 'w' + wp.id; if (st.wKey !== key) { st.wKey = key; st.wStart = w.time; } else if (w.time - st.wStart > 6) st.black.add(key);
+        if (Math.hypot(wp.x - p.x, wp.y - p.y) < 10) press('interact'); else goTo(wp.x, wp.y); return;
+      }
     }
     if (target) {
       c.aimDir = { x: target.x - p.x, y: target.y - 12 - p.y + 12 };
