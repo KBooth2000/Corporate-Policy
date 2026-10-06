@@ -51,8 +51,14 @@ await page.evaluate(({ god, speed }) => {
     if (w.cutscene) { c.move = { x: 0, y: 0 }; return; }
     if (p.grabbing) { if (p.execCandidate) press('interact'); else press('ranged'); return; }
     if (p.rage >= 100 && p.raging <= 0 && w.inCombat) press('rage');
+    // distance field from the player (walkable tiles) so we only chase enemies we can actually reach
+    const mw = w.map.w, mh = w.map.h; const df = new Int32Array(mw * mh).fill(-1);
+    { const st0 = Math.floor(p.y / TILE) * mw + Math.floor(p.x / TILE); const q = [st0]; df[st0] = 0; let h = 0;
+      while (h < q.length) { const c = q[h++]; const cx = c % mw, cy = (c / mw) | 0; for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= mw || ny >= mh) continue; const ni = ny * mw + nx; if (df[ni] >= 0 || w.isSolidTile(nx, ny) || w.propBlock[ni]) continue; df[ni] = df[c] + 1; q.push(ni); } } }
+    const pathD = (x, y) => { const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE); let b = -1; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const v = df[(ty + dy) * mw + tx + dx]; if (v >= 0 && (b < 0 || v < b)) b = v; } return b; };
     let target = null, bd = 1e9;
-    for (const a of w.actors) { if (a.team !== 'enemy' || !a.alive || a.grabbedBy) continue; const d = Math.hypot(a.x - p.x, a.y - p.y); if (d < bd) { bd = d; target = a; } }
+    for (const a of w.actors) { if (a.team !== 'enemy' || !a.alive || a.grabbedBy) continue; const pd = pathD(a.x, a.y); if (pd < 0) continue; if (pd < bd) { bd = pd; target = a; } }
+    if (target) bd = Math.hypot(target.x - p.x, target.y - p.y);
     if (target) {
       c.aimDir = { x: target.x - p.x, y: target.y - 12 - p.y + 12 };
       if (p.grabCandidate && Math.random() < 0.3) { press('grab'); return; }
