@@ -47,7 +47,12 @@ await page.evaluate(({ god, speed }) => {
     };
     const goTo = (x, y) => {
       const wp = bfs(Math.floor(x / TILE), Math.floor(y / TILE)) || { x, y };
-      const dx = wp.x - p.x, dy = wp.y - p.y, l = Math.hypot(dx, dy) || 1; c.move = { x: dx / l, y: dy / l };
+      let dx = wp.x - p.x, dy = wp.y - p.y; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+      // anti-snag: if we haven't moved for a while, slide along one axis
+      const moved = Math.hypot(p.x - (st.lx ?? 0), p.y - (st.ly ?? 0));
+      st.still = moved < 0.3 ? (st.still ?? 0) + 1 : 0; st.lx = p.x; st.ly = p.y;
+      if (st.still > 30) { if (Math.abs(dx) > Math.abs(dy)) { dy = Math.sign(dy || 1); dx = 0; } else { dx = Math.sign(dx || 1); dy = 0; } if (st.still > 90) { dx = -dx; dy = -dy; } if (st.still > 150) st.still = 0; }
+      c.move = { x: dx, y: dy };
     };
     if (w.cutscene) { c.move = { x: 0, y: 0 }; return; }
     if (p.grabbing) { if (p.execCandidate) press('interact'); else press('ranged'); return; }
