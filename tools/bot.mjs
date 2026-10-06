@@ -120,7 +120,8 @@ while ((Date.now() - t0) / 1000 < +seconds) {
         return { p: [p.x | 0, p.y | 0], room: w.currentRoom, inCombat: w.inCombat, cut: !!w.cutscene, melee: s.run.loadout.melee?.id ?? null, grabbing: !!p.grabbing, frozen: p.frozen, stun: p.status.stun,
           rooms: w.rooms.map((r, i) => ({ i, k: r.def.kind, e: r.entered, l: r.locked, c: r.cleared, live: w.liveEnemies(i) })).filter((r) => !r.c),
           en: w.actors.filter((a) => a.team === 'enemy' && a.alive).map((e) => ({ a: e.archetype, x: e.x | 0, y: e.y | 0, room: e.roomId, at: w.roomAt(e.x, e.y), flow: w.flow[(e.y / T | 0) * w.map.w + (e.x / T | 0)], grab: !!e.grabbedBy, thrown: !!e.thrown, stuck: e.__stuck, coll: w.collides(e) })),
-          doors: w.doors.filter((d) => d.state !== 'open').map((d) => d.def.roomA + '-' + d.def.roomB + ':' + d.state) }; });
+          doors: w.doors.filter((d) => d.state !== 'open').map((d) => d.def.roomA + '-' + d.def.roomB + ':' + d.state),
+          boss: w.actors.filter((a) => a.isBoss).map((b) => ({ mode: b.mode, hp: b.hp | 0, max: b.maxHp, phase: b.phase, sw: b.staggerWindow, inv: b.invuln, busy: b.busy, d: Math.hypot(b.x - p.x, b.y - p.y) | 0, cand: p.grabCandidate === b, grabRange: p.stats.grabRange })) }; });
       console.log('DIAG', JSON.stringify(diag));
     }
   } else stuckN = 0;
