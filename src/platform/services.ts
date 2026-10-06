@@ -11,6 +11,7 @@ import { dailySeed, hashCombine, seedToCode, utcDateKey } from '../core/rng';
 import { backend } from '../core/storage';
 import { profile, profileSavedHooks, saveProfile, Profile } from '../game/profile';
 import type { RunState } from '../game/run';
+import { ANDROID_PAYWALL_ENABLED } from './edition';
 
 export const GAME_VERSION = '1.0.0';
 
@@ -162,6 +163,7 @@ export function flushTelemetry(): boolean {
 
 // ---------------------------------------------------------------------------
 // Local implementation
+const IAP_KEY = 'iap_full_game';
 const BOARD_KEEP = 21; // days of local boards to retain
 
 export class LocalPlatform implements Platform {
@@ -287,9 +289,19 @@ export class PlayGamesPlatform extends LocalPlatform {
   };
 
   override iap = {
-    // PLUG-IN POINT: Play Billing one-time product "full_game". Stubbed unlocked (spec 8.1) until configured.
-    isFullGameUnlocked: (): boolean => profile().fullGameUnlocked !== false,
-    purchase: async (): Promise<boolean> => { try { const r = await this.plugin?.purchase?.(); if (r) { profile().fullGameUnlocked = r.value; saveProfile(); return r.value; } } catch { /* */ } profile().fullGameUnlocked = true; saveProfile(); return true; },
+    // PLUG-IN POINT: Play Billing one-time product "full_game".
+    // While ANDROID_PAYWALL_ENABLED (platform/edition.ts) is false this is stubbed unlocked (spec 8.1): the free build is the full game.
+    // When the owner flips the switch, the entitlement is kept in its own storage key (NOT in the shared profile, so a profile
+    // import / cloud pull can never grant it) and the demo gate in scenes/gameplay.ts + scenes/demoend.ts goes live.
+    isFullGameUnlocked: (): boolean => !ANDROID_PAYWALL_ENABLED || backend.read(IAP_KEY) === '1',
+    purchase: async (): Promise<boolean> => {
+      try {
+        const r = await this.plugin?.purchase?.();
+        if (r) { if (r.value) { backend.write(IAP_KEY, '1'); profile().fullGameUnlocked = true; saveProfile(); } return r.value; }
+      } catch { /* */ }
+      if (ANDROID_PAYWALL_ENABLED) return false; // no billing plugin: nothing to buy with
+      profile().fullGameUnlocked = true; saveProfile(); return true;
+    },
   };
 }
 

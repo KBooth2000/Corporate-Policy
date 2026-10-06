@@ -121,7 +121,7 @@ function onRunEnd(s: GameplayScene, won: boolean): void {
   const leave = computeLeave(run, won);
 
   // ---- lifetime statistics
-  st.runs++; if (won) st.wins++; else st.deaths++;
+  st.runs++; if (won) st.wins++; else if (!run.flags.demoComplete) st.deaths++; // an end-of-demo (Act 1 gate, edition.ts) is neither a win nor a death
   st.kills += L.kills; st.executions += L.executions; st.defenestrations += L.defenestrations; st.breaches += L.breaches;
   st.hazardKills += L.hazardKills; st.rageActivations += L.rageActivations; st.promotedTerminated += L.promotedTerminated;
   st.cashEarned += L.cashEarned; st.liftAmbushes += L.liftAmbushes; st.corridors += L.corridorsTaken; st.floorsCleared += L.floorsCleared;
@@ -170,7 +170,7 @@ function onRunEnd(s: GameplayScene, won: boolean): void {
 
   // ---- history (assist runs are marked: spec 7.3)
   const m = meta();
-  m.lastOutcome = won ? 'win' : 'death';
+  m.lastOutcome = won || run.flags.demoComplete ? 'win' : 'death';
   const killer = s.killer as unknown as { name?: string; title?: string } | null;
   m.history.unshift({
     at: Date.now(), role: run.role, floor: run.floor, won, time: Math.round(duration), seed: run.seedCode, kills: L.kills, leave: leave.total, score,

@@ -13,6 +13,7 @@ import { PROMOTION_MODE } from '../../flags';
 import { profile, saveProfile } from '../../profile';
 import { buildRun, continueShift, dailyInfo, describeModifiers, hasSuspend, kpiOf, launchRun, peekSuspend, selectedRole } from '../runs';
 import { getPlatform, LeaderboardEntry } from '../../../platform/services';
+import { isDemo, notifyFullGameOnly, FULL_GAME_BADGE } from '../../../platform/edition';
 import { fmtTime } from '../util';
 import { InfoRow } from './rows';
 import { PanelScene } from './panel';
@@ -118,8 +119,14 @@ export class ClockInPanel extends PanelScene {
     // daily
     const d = dailyInfo();
     items.push(new Heading('Daily run', 'calendar'));
+    if (isDemo()) {
+      // spec 8.1: the Daily Run is full-game only (demo build): locked row with a "Full game" badge
+      items.push(B(new Button({ text: `Daily run  [${FULL_GAME_BADGE}]`, glyph: 'lock', onPress: () => notifyFullGameOnly('daily'), sound: 'ui_error' })));
+      items.push(new Label('The Daily Run is part of the full game.', { dim: true, scale: 1 }));
+    } else {
     items.push(B(new Button({ text: d.scoredAvailable && !app.settings.assist.enabled ? `Daily run ${d.key}: scored attempt` : `Daily run ${d.key}: practice`, glyph: 'calendar', onPress: () => this.openDaily(), sound: 'ui_select' })));
     items.push(new Label('One scored attempt per day (00:00 UTC reset), a fixed published modifier set and no Promotion.', { dim: true, scale: 1 }));
+    }
     items.push(new Spacer(3));
 
     // seed
@@ -134,7 +141,12 @@ export class ClockInPanel extends PanelScene {
 
     // performance review
     items.push(new Heading('Performance Review', 'chart'));
-    if (!p.prUnlocked) {
+    if (isDemo()) {
+      // spec 8.1: Performance Review is full-game only (demo build)
+      items.push(B(new Button({ text: `Performance Review  [${FULL_GAME_BADGE}]`, glyph: 'lock', onPress: () => notifyFullGameOnly('performance_review'), sound: 'ui_error' })));
+      items.push(new Label('Difficulty modifiers and KPI cosmetics are part of the full game.', { dim: true, scale: 1 }));
+      items.push(new Spacer(3));
+    } else if (!p.prUnlocked) {
       items.push(new Label('Locked. Defeat the CEO once to unlock difficulty modifiers. Each rank earns KPI points toward cosmetic rewards: outfits, titles and hub decor. Never power.', { dim: true, scale: 1 }));
     items.push(new Spacer(3));
     } else {

@@ -30,6 +30,8 @@ import { renderNotifications, updateNotifications, notify, notifyConfig } from '
 import { TransitionScene } from './transition';
 import { PauseScene } from './pause';
 import { ARCHETYPE_DEFS } from '../data/tables';
+import { isDemoGateFloor } from '../platform/edition';
+import { DemoEndPanel } from './demoend';
 
 export const SUSPEND_KEY = 'suspend';
 
@@ -50,6 +52,9 @@ export class GameplayScene implements Scene {
   killMethod = '';
   killWeapon = '';
   floorTime = 0;
+  /** DEMO GATE (spec 8.1): countdown (s) until the "Probation Period Complete" screen opens after the Act 1 boss falls; < 0 = idle. */
+  demoGateT = -1;
+  private demoShown = false;
   floorStartJson = '';
   /** Last room cleared — floor rewards appear there (Hades model). */
   lastClearedAt: Vec | null = null;
@@ -113,6 +118,7 @@ export class GameplayScene implements Scene {
   private updateCtl(): void {
     const inp = app.input;
     const c = this.ctl;
+    inp.chordAsTap = app.settings.holdToTap; // accessibility: Rage chord (LB+RB) becomes a single-button tap
     const bot = (window as any).__cpBot as ((c: PlayerCtl, s: GameplayScene) => void) | undefined;
     if (bot) { bot(c, this); return; }
     c.move = inp.move();
@@ -143,6 +149,8 @@ export class GameplayScene implements Scene {
     run.floor = plan.floor_number;
     run.wing = plan.wing;
     this.state = 'play';
+    this.demoGateT = -1;
+    this.demoShown = false;
     this.floorTime = 0;
     this.lastClearedAt = null;
     this.data = {};
@@ -212,14 +220,17 @@ export class GameplayScene implements Scene {
   private setupExits(): void {
     const w = this.world;
     const previews: any[] = [];
+    // DEMO GATE (spec 8.1, D25): on the Act 1 boss floor of a demo build every exit ends the run at the "Probation Period Complete" screen instead
+    const gate = isDemoGateFloor(this.plan);
     for (const ex of w.map.exits) {
       const opt = this.exits.find((o) => o.kind === ex.kind);
-      const available = !!opt?.available && !!opt.dest;
+      const available = gate || (!!opt?.available && !!opt.dest);
       ex.available = available;
       const dest = opt?.dest;
-      const label = ex.kind === 'stairs' ? 'STAIRS +1' : ex.kind === 'lift' ? 'LIFT +2' : 'CORRIDOR';
+      const label = gate ? 'PROBATION' : ex.kind === 'stairs' ? 'STAIRS +1' : ex.kind === 'lift' ? 'LIFT +2' : 'CORRIDOR';
       let iconName = 'reward_cash', sub: string | undefined;
-      if (dest) {
+      if (gate) { iconName = 'reward_boss'; sub = 'END OF DEMO'; }
+      else if (dest) {
         iconName = rewardIcon(dest.reward);
         if (dest.floor_type === 'elite') sub = 'ELITE';
         if (dest.rewardDept) sub = (sub ? sub + ' · ' : '') + dest.rewardDept.toUpperCase();
@@ -229,8 +240,8 @@ export class GameplayScene implements Scene {
       previews.push({ x: ex.x, y: ex.y, icon: iconName, label, sub, available });
       w.interactables.push({
         x: ex.x, y: ex.y, r: 22, priority: 2,
-        label: available ? `${ex.kind === 'stairs' ? 'Take the stairs' : ex.kind === 'lift' ? 'Call the lift' : 'Use the corridor'}` : 'Out of order',
-        sub: available ? rewardName(dest!.reward) + (dest!.floor_type === 'elite' ? ' (Elite)' : '') : undefined,
+        label: gate ? 'Complete probation' : available ? `${ex.kind === 'stairs' ? 'Take the stairs' : ex.kind === 'lift' ? 'Call the lift' : 'Use the corridor'}` : 'Out of order',
+        sub: gate ? 'End of the demo' : available ? rewardName(dest!.reward) + (dest!.floor_type === 'elite' ? ' (Elite)' : '') : undefined,
         enabled: () => w.floorCleared && available && this.state === 'play',
         onInteract: () => this.depart(ex.kind),
       });
@@ -306,6 +317,28 @@ export class GameplayScene implements Scene {
       if (plan.floor_type === 'elite') dropCash(w, at.x - 12, at.y, 25 + plan.floor_number * 2); // spec 8.4 elite bonus
     }
     // stair-landing style heal is applied on departure
+    // DEMO GATE (spec 8.1, D25): Act 1 boss down in a demo build -> after a short beat show the CorpOS end-of-demo screen (see demoComplete)
+    if (isDemoGateFloor(plan)) {
+      this.hud.showBanner('PROBATION PERIOD COMPLETE', 'Report to CorpOS for your review.', '#8af0a0', 3.5);
+      this.demoGateT = 3.5;
+    }
+  }
+
+  /**
+   * DEMO GATE (spec 8.1, D25): end the run after the Act 1 boss. Shows the "Probation Period Complete" CorpOS panel (unlock / wishlist),
+   * then ends the run through the normal summary with `run.flags.demoComplete` set so progression + the summary treat it as an end of demo
+   * (Annual Leave is awarded, it is neither a win nor a death). The profile is shared with the full game, so progress carries over.
+   */
+  demoComplete(): void {
+    if (this.state !== 'play' || this.demoShown) return;
+    this.demoShown = true;
+    this.demoGateT = -1;
+    this.persistPlayer();
+    this.run.flags.demoComplete = true;
+    this.run.log.bossesKilled = Math.max(this.run.log.bossesKilled | 0, 1);
+    this.state = 'done';
+    audio.sfx('stinger_victory');
+    app.push(new DemoEndPanel(() => this.endRun(false)));
   }
 
   private onExecution(type: string, victim: Actor): void {
@@ -345,6 +378,7 @@ export class GameplayScene implements Scene {
   // ------------------------------------------------------------------ departures (spec 3.3)
   depart(kind: ExitKind): void {
     if (this.state !== 'play') return;
+    if (isDemoGateFloor(this.plan)) { this.demoComplete(); return; } // DEMO GATE: no way past the Act 1 boss in a demo build
     const opt = this.exits.find((e) => e.kind === kind);
     if (!opt?.dest) return;
     const run = this.run;
@@ -440,7 +474,7 @@ export class GameplayScene implements Scene {
     const w = this.world;
     this.updateCtl();
     touch.update();
-    touch.setContext({ mode: 'gameplay', grab: !!this.player.grabCandidate || !!this.player.grabbing, interact: this.player.interactTarget?.label ?? (this.player.execCandidate ? 'Execute' : null), rageReady: this.player.rage >= 100, rageActive: this.player.raging > 0, ranged: !!this.run.loadout.ranged || !!this.run.loadout.thrown } as any);
+    touch.setContext({ mode: 'gameplay', grab: !!this.player.grabCandidate || !!this.player.grabbing, interact: this.player.interactTarget?.label ?? (this.player.execCandidate ? 'Execute' : null), rageReady: this.player.rage >= 100, rageActive: this.player.raging > 0, ranged: !!this.run.loadout.ranged || !!this.run.loadout.thrown, heavyLatched: this.player.charging && app.settings.holdToTap } as any);
     updateNotifications(dt);
     this.hud.update(dt);
     if (this.state === 'dying') {
@@ -458,6 +492,7 @@ export class GameplayScene implements Scene {
     const sdt = dt * scale;
     this.floorTime += sdt;
     w.update(sdt);
+    if (this.demoGateT >= 0 && !w.cutscene) { this.demoGateT -= sdt; if (this.demoGateT <= 0) { this.demoComplete(); return; } }
     updateReinforcements(this.spawn);
     // wet floors from mops/coolers
     const wz = (w as any).wetZones as { x: number; y: number; r: number; t: number }[] | undefined;

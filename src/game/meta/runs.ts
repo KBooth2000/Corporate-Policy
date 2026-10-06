@@ -11,6 +11,7 @@ import { SCENES } from '../registry';
 import { GameplayScene, SUSPEND_KEY } from '../../scenes/gameplay';
 import { audio } from '../../audio/audio';
 import { getPlatform } from '../../platform/services';
+import { isDemo, notifyFullGameOnly } from '../../platform/edition';
 import { isRoleUnlocked, isWeaponUnlocked } from './catalogue';
 import { meta } from './prefs';
 
@@ -48,7 +49,7 @@ export function describeModifiers(mods: Record<string, number>): { id: string; n
 
 export function activeModifiers(): Record<string, number> {
   const p = profile();
-  if (!p.prUnlocked) return {};
+  if (!p.prUnlocked || isDemo()) return {}; // Performance Review is full-game only (spec 8.1)
   const out: Record<string, number> = {};
   for (const m of MODIFIERS) { const r = Math.max(0, Math.min(m.ranks, Math.floor(p.prModifiers[m.id] ?? 0))); if (r) out[m.id] = r; }
   return out;
@@ -121,6 +122,7 @@ export function continueShift(): boolean {
  * Any older suspend save is discarded (starting over replaces the shift).
  */
 export function launchRun(run: RunState): void {
+  if (run.daily && isDemo()) { notifyFullGameOnly('daily'); return; } // Daily Run is full-game only (spec 8.1)
   discardSuspend();
   const p = profile();
   if (run.daily && !run.practice && !run.assist) p.daily.lastScoredKey = run.dailyKey ?? utcDateKey();

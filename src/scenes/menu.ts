@@ -14,6 +14,7 @@ import {
   drawWindow, drawDesktop, drawTaskbar, windowClient, OpenAnim, popRect, titleBarH, taskbarH, notify, updateNotifications, renderNotifications, ConfirmDialog,
 } from '../ui/corpos';
 import { SettingsScene } from './settings';
+import { isDemo, notifyFullGameOnly, FULL_GAME_BADGE } from '../platform/edition';
 import { HR_TERMS, LOGIN_FLAVOUR } from '../data/text/ui';
 
 export interface MainMenuOpts {
@@ -51,6 +52,8 @@ const ACCEPT_LINES = [
 
 // ---------------------------------------------------------------------------
 class DesktopIcon extends Widget {
+  /** Demo build: the entry point is locked behind the full game; shows a lock badge and `onOpen` only explains why. */
+  lockBadge: string | null = null;
   constructor(public label: string, public glyph: string, public tint: string, public onOpen: () => void, public appear = 0) { super(); }
   override activate(): void { this.press = 1; audio.sfx('ui_select'); this.onOpen(); }
   override draw(g: Ctx): void {
@@ -63,6 +66,13 @@ class DesktopIcon extends Widget {
     if (sel) { g.fillStyle = 'rgba(255,243,196,0.16)'; g.fillRect(this.x + 2, this.y, this.w - 4, this.h); }
     g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(tx + 2, ty + 3, 24, 24);
     g.drawImage(tile, tx, ty);
+    if (this.lockBadge) {
+      g.fillStyle = 'rgba(8,12,22,0.55)'; g.fillRect(tx, ty, 24, 24);
+      const bw = measure(this.lockBadge) + 16, bx = Math.round(this.x + (this.w - bw) / 2), by = ty + 8;
+      g.fillStyle = '#14161f'; g.fillRect(bx - 1, by - 1, bw + 2, 12); g.fillStyle = '#ffd34d'; g.fillRect(bx, by, bw, 10);
+      drawGlyph(g, 'lock', bx + 6, by + 5, '#14161f', 1);
+      drawText(g, this.lockBadge, bx + 12, by + 1, { color: '#14161f', shadow: null });
+    }
     const lw = measure(this.label) + 6;
     const lx = Math.round(this.x + (this.w - lw) / 2), ly = ty + 27;
     if (this.focused) { g.fillStyle = C.navyHi; g.fillRect(lx, ly - 1, lw, 11); g.fillStyle = C.gold; g.fillRect(lx, ly + 10, lw, 1); }
@@ -221,7 +231,12 @@ export class MainMenuScene implements Scene {
     this.btnDecline = new Button({ text: 'DECLINE', kind: 'danger', onPress: () => this.decline(), sound: null });
     const ic = (label: string, glyph: string, tint: string, fn: () => void) => new DesktopIcon(label, glyph, tint, fn);
     if (o.hasContinue && o.onContinue) this.icons.push(ic('Continue Shift', 'play', '#2c8a50', () => o.onContinue!()));
-    if (o.onDaily) this.icons.push(ic('Daily Run', 'calendar', '#c98a1a', () => o.onDaily!()));
+    if (o.onDaily) {
+      const daily = ic('Daily Run', 'calendar', '#c98a1a', () => o.onDaily!());
+      // spec 8.1: the Daily Run is full-game only (Steam / Android demo)
+      if (isDemo()) { daily.lockBadge = FULL_GAME_BADGE; daily.onOpen = () => notifyFullGameOnly('daily'); }
+      this.icons.push(daily);
+    }
     if (o.onSeeded) this.icons.push(ic('Enter Seed', 'hash', '#7a5fc8', () => this.ui.openModal(new SeedDialog((s) => o.onSeeded!(s)))));
     this.icons.push(ic('Control Panel', 'gear', '#1f7f8e', () => (o.onSettings ? o.onSettings() : app.push(new SettingsScene(() => app.pop())))));
     if (o.onCredits) this.icons.push(ic('Credits', 'user', '#3f6fb0', () => o.onCredits!()));

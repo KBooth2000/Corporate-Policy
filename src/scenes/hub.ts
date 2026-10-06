@@ -11,6 +11,7 @@ import { drawText, measure, wrap } from '../render/font';
 import { touch } from '../ui/touch';
 import { Ui, drawHintBar } from '../ui/widgets';
 import { C, box, ink, drawGlyph, drawPrompt, uiS, inRect, clamp, easeOutCubic, dim, RectL } from '../ui/style';
+import { isDemo, notifyFullGameOnly, FULL_GAME_BADGE } from '../platform/edition';
 import { drawTaskbar, taskbarH, notify, updateNotifications, renderNotifications, PopupMenu, ConfirmDialog, drawBadge } from '../ui/corpos';
 import { icon } from '../art/items';
 import { bakeCharacter, rollLook, BakedCharacter } from '../art/characters';
@@ -141,7 +142,7 @@ export class HubScene implements Scene {
       case 'noticeboard': app.push(new NoticeboardPanel(done)); break;
       case 'dashboard': app.push(new DashboardPanel(done)); break;
       case 'radio': app.push(new RadioPanel(done)); break;
-      case 'daily': app.push(new DailyPanel(this.launch, done)); break;
+      case 'daily': if (isDemo()) notifyFullGameOnly('daily'); else app.push(new DailyPanel(this.launch, done)); break; // spec 8.1: full-game only
       case 'clockin': app.push(new ClockInPanel(this.launch, done)); break;
     }
   }
@@ -158,7 +159,7 @@ export class HubScene implements Scene {
       title: 'Car Park Menu',
       items: [
         { label: 'Clock In (run setup)', glyph: 'clock', onPick: go('clockin') },
-        { label: 'Daily Run board', glyph: 'calendar', onPick: go('daily') },
+        { label: isDemo() ? `Daily Run board  [${FULL_GAME_BADGE}]` : 'Daily Run board', glyph: isDemo() ? 'lock' : 'calendar', onPick: go('daily') },
         { label: 'Vending Machine', glyph: 'cart', onPick: go('vending') },
         { label: 'Car Boot (role and loadout)', glyph: 'folder', onPick: go('carboot') },
         { label: 'Internal Announcements', glyph: 'mail', onPick: go('noticeboard') },
@@ -403,12 +404,13 @@ export class HubScene implements Scene {
     }
     // ---- top-right: daily availability
     const d = dailyInfo();
-    const dt = d.scoredAvailable && !app.settings.assist.enabled ? 'DAILY: SCORED ATTEMPT READY' : 'DAILY: PRACTICE';
+    const demo = isDemo();
+    const dt = demo ? `DAILY RUN: ${FULL_GAME_BADGE.toUpperCase()}` : d.scoredAvailable && !app.settings.assist.enabled ? 'DAILY: SCORED ATTEMPT READY' : 'DAILY: PRACTICE';
     const dw = measure(dt) + 22;
     const dx = r.W - r.safe.r - dw - 6;
     g.fillStyle = 'rgba(8,12,22,0.82)'; g.fillRect(dx, y0 + 1, dw, 12);
     g.drawImage(icon('daily'), dx + 2, y0 - 1, 16, 16);
-    drawText(g, dt, dx + 19, y0 + 4, { color: d.scoredAvailable && !app.settings.assist.enabled ? '#7fff9c' : '#ffb04d', shadow: null });
+    drawText(g, dt, dx + 19, y0 + 4, { color: demo ? '#8f98a8' : d.scoredAvailable && !app.settings.assist.enabled ? '#7fff9c' : '#ffb04d', shadow: null });
     if (hasSuspend()) {
       const t2 = 'SHIFT SUSPENDED - CLOCK IN TO CONTINUE';
       const w3 = measure(t2) + 14;

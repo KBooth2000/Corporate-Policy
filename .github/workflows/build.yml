@@ -89,6 +89,46 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------------------------
+  # Steam "free Act 1" demo (spec 8.1, D25): the same Electron build compiled with VITE_DEMO=1 (src/platform/edition.ts isDemo()).
+  # Portable exe only, renamed so it can never be mistaken for the full game. Separate job: the full Windows job above is untouched.
+  windows-demo:
+    name: Windows Steam demo (Act 1, portable)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
+          key: electron-win-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - name: Build web bundle (demo edition)
+        run: npm run build
+        env:
+          VITE_DEMO: '1'
+      - name: Package (portable exe, demo output folder)
+        run: npx electron-builder --win portable --x64 --publish never --config.directories.output=release-demo
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Rename demo executable
+        shell: pwsh
+        run: |
+          Get-ChildItem release-demo -Filter 'CompanyPolicy-Portable-*.exe' | ForEach-Object { Rename-Item $_.FullName ($_.Name -replace 'CompanyPolicy-Portable-', 'CompanyPolicy-Demo-Portable-') }
+          Get-ChildItem release-demo | Format-Table Name, Length
+      - name: Upload Windows demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CompanyPolicy-Windows-Demo
+          path: release-demo/CompanyPolicy-Demo-Portable-*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------------------------
   linux:
     name: Linux AppImage (Steam Deck testing)
     runs-on: ubuntu-latest

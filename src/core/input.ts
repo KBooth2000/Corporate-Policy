@@ -75,6 +75,8 @@ export class Input {
   private padIndex = -1;
   padId = '';
   rumbleEnabled = true;
+  /** holdToTap accessibility (spec 2.6): a pad chord such as LB+RB (Rage) triggers from any single button of the chord. Set by the gameplay scene. */
+  chordAsTap = false;
 
   constructor(target: HTMLElement, toInternal: (cx: number, cy: number) => { x: number; y: number }) {
     this.toInternal = toInternal;
@@ -157,7 +159,7 @@ export class Input {
     const [kind, code] = b.split(':');
     if (kind === 'key') return this.keys.has(code);
     if (kind === 'mouse') return this.mouseButtons.has(+code);
-    if (kind === 'pad') return code.split('+').every((n) => !!this.padButtons[+n]);
+    if (kind === 'pad') { const parts = code.split('+'); return this.chordAsTap ? parts.some((n) => !!this.padButtons[+n]) : parts.every((n) => !!this.padButtons[+n]); }
     return false;
   }
 

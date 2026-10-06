@@ -52,11 +52,12 @@ export function buildSlides(s: GameplayScene, won: boolean, res: RunResult): { s
   const slides: Slide[] = [];
   const flagLine = [run.assist ? 'Workplace Adjustments: marked' : '', run.daily ? (run.practice ? 'Daily (practice)' : 'Daily run') : run.seeded ? 'Seeded run' : ''].filter(Boolean).join('  |  ');
   const ttl = titleName();
+  const demo = !won && run.flags.demoComplete === true; // end of the Act 1 demo (platform/edition.ts gate)
   slides.push({
     type: 'title',
-    title: won ? 'Exceeds Expectations' : `Floor ${res.floor}: Terminated`,
-    subtitle: won ? pick(VICTORY_LINES, run) : pick(DEATH_MESSAGES, run),
-    stamp: won ? 'PROMOTED' : 'DOES NOT MEET',
+    title: demo ? 'Probation Period Complete' : won ? 'Exceeds Expectations' : `Floor ${res.floor}: Terminated`,
+    subtitle: demo ? 'Probation passed. Permanent roles await.' : won ? pick(VICTORY_LINES, run) : pick(DEATH_MESSAGES, run),
+    stamp: demo ? 'END OF DEMO' : won ? 'PROMOTED' : 'DOES NOT MEET',
     footer: `${role}${ttl ? ' (' + ttl + ')' : ''}  |  ${fmtTime(dur)}  |  Seed ${run.seedCode || seedToCode(run.seed)}${flagLine ? '  |  ' + flagLine : ''}`,
   });
   slides.push({
@@ -103,7 +104,7 @@ export function buildSlides(s: GameplayScene, won: boolean, res: RunResult): { s
   if (!ub.length) ub.push('No new unlocks this run.', 'HR suggests trying harder, and a different weapon.');
   slides.push({ type: 'bullets', title: 'Unlocks and Achievements', bullets: ub.slice(0, 7), note: ub.length > 7 ? `+${ub.length - 7} more in your dashboard.` : res.discoveries.length ? `First-time bonuses: ${res.discoveries.slice(0, 3).join('; ')}.` : undefined });
   // promotion
-  if (!won) {
+  if (!won && !demo) {
     const pr = promotionNotice(s);
     if (pr) {
       const b = [`${pr.name} has been promoted to ${pr.rankName}.`, `Title: ${pr.title || pr.rankName}.`, `Floor ${pr.floor}. ${METHOD_LABELS[pr.method] ? 'Method: ' + METHOD_LABELS[pr.method].toLowerCase() : 'Method: ' + pr.method}${pr.weapon ? ' (' + pr.weapon.replace(/_/g, ' ') + ')' : ''}.`,

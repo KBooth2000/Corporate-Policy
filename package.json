@@ -12,6 +12,8 @@
     "electron:dev": "vite build && electron .",
     "icons": "node tools/make-icons.mjs",
     "dist:win": "vite build && electron-builder --win nsis portable --x64 --publish never",
+    "build:demo": "vite build --mode demo",
+    "dist:demo": "vite build --mode demo && electron-builder --win portable --x64 --publish never --config.directories.output=release-demo",
     "dist:linux": "vite build && electron-builder --linux AppImage --x64 --publish never",
     "cap:sync": "vite build && cap sync android",
     "android:build": "npm run cap:sync && node android/run-gradle.mjs assembleRelease bundleRelease"

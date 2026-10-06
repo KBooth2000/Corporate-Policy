@@ -57,6 +57,10 @@ export class Player extends Actor {
   comboTimer = 0;
   charge = 0;
   charging = false;
+  /** holdToTap (spec 2.6): seconds the toggled heavy charge has been latched on. */
+  chargeT = 0;
+  /** holdToTap: remaining seconds of a tapped Laser Pointer burst (replaces holding the fire button). */
+  laserLatch = 0;
   dashT = 0;
   dashCharges: number;
   dashDir: Vec = { x: 1, y: 0 };
@@ -275,13 +279,18 @@ export class Player extends Actor {
     }
 
     // melee: light combos; hold to charge heavy (spec 2.1)
-    const holdMode = app.settings.heavyMode === 'hold';
+    // Accessibility (spec 2.6, settings.holdToTap): nothing needs to be held. Melee is tap-only, the heavy action becomes a
+    // toggle (tap to start charging, tap again to swing) and the Rage chord / Laser Pointer / touch fire are single taps.
+    const tapMode = app.settings.holdToTap;
+    const holdMode = app.settings.heavyMode === 'hold' && !tapMode;
     if (this.grabbing) {
+      if (tapMode) this.cancelCharge();
       if (c.pressed('melee')) this.pummel();
       if (c.pressed('ranged')) this.throwGrabbed();
       return;
     }
-    if (c.pressed('heavy') && !this.swing && this.attackCd <= 0) { if (!this.verbBanned('melee')) this.startSwing(true, 1); }
+    if (tapMode) this.tapHeavy(c, dt);
+    else if (c.pressed('heavy') && !this.swing && this.attackCd <= 0) { if (!this.verbBanned('melee')) this.startSwing(true, 1); }
     if (holdMode) {
       // tap = light attack on press (responsive); keep holding = charge a heavy, release to swing (spec 2.1)
       if (c.pressed('melee')) {
@@ -314,8 +323,15 @@ export class Player extends Actor {
     }
     // ranged / throw (spec 2.1)
     const r = this.run.loadout.ranged;
+    if (tapMode) {
+      // tap-to-fire: a lone fire/throw button with no aim stick locks onto the nearest visible enemy; a Laser Pointer tap is a short burst
+      if (c.pressed('ranged') && r?.id === 'laser_pointer') this.laserLatch = 0.9;
+      if (c.down('ranged') || this.laserLatch > 0) this.tapAutoAim();
+    }
+    const laserOn = c.down('ranged') || this.laserLatch > 0;
+    this.laserLatch = Math.max(0, this.laserLatch - dt);
     if (r && r.ammo > 0 && def(r.id).id === 'laser_pointer') {
-      if (c.down('ranged')) { if (!this.verbBanned('ranged')) this.fireLaser(dt, r); }
+      if (laserOn) { if (!this.verbBanned('ranged')) this.fireLaser(dt, r); }
     } else if (c.down('ranged') && this.rangedCd <= 0 && r && r.ammo > 0) {
       if (c.pressed('ranged') || def(r.id).interval < 0.35) { if (!this.verbBanned('ranged')) this.fireRanged(r); }
     } else if (c.pressed('ranged') && this.rangedCd <= 0) {
@@ -328,6 +344,42 @@ export class Player extends Actor {
   }
   bufferedMelee = 0;
 
+  /** holdToTap: tap `heavy` to start charging a heavy swing, tap again to release it (auto-releases after 3 s). */
+  private tapHeavy(c: PlayerCtl, dt: number): void {
+    if (this.charging) {
+      this.chargeT += dt;
+      this.charge = Math.min(1, this.chargeT / 0.6);
+      if (this.swing) { this.cancelCharge(); return; }
+    }
+    const tap = c.pressed('heavy');
+    if (this.charging && (tap || this.chargeT >= 3)) {
+      const mult = 0.6 + this.charge * 0.6;
+      this.cancelCharge();
+      if (!this.verbBanned('melee')) this.startSwing(true, mult);
+    } else if (!this.charging && tap && !this.swing && this.attackCd <= 0) {
+      this.charging = true; this.chargeT = 0; this.charge = 0; this.bufferedMelee = 0;
+      audio.sfx('charge', { vol: 0.5 });
+    }
+  }
+
+  private cancelCharge(): void {
+    if (!this.charging && this.chargeT === 0) return;
+    this.charging = false; this.charge = 0; this.chargeT = 0;
+  }
+
+  /** holdToTap: with no aim stick or mouse, point at the nearest enemy in line of sight (a fire button has no direction of its own). */
+  private tapAutoAim(): void {
+    const c = this.ctl;
+    if (c.aimPoint || c.aimDir) return;
+    let best: Actor | null = null, bd = 260;
+    for (const a of this.world.actors) {
+      if (a.team !== 'enemy' || !a.alive) continue;
+      const d = dist(this, a);
+      if (d < bd && this.world.los(this, a)) { best = a; bd = d; }
+    }
+    if (best) { this.aim = angleTo(this, best); this.face(this.aim); }
+  }
+
   // ------------------------------------------------------------------ dash
   startDash(): void {
     const c = this.ctl;
@@ -337,7 +389,7 @@ export class Player extends Actor {
     this.dashCharges -= 1;
     this.invuln = Math.max(this.invuln, 0.22);
     this.ghost = true;
-    this.charging = false; this.charge = 0;
+    this.charging = false; this.charge = 0; this.chargeT = 0;
     this.swing = null;
     audio.sfx('dash', { x: this.x, y: this.y });
     this.world.bus.emit('dash', { x: this.x, y: this.y, dirX: d.x, dirY: d.y });

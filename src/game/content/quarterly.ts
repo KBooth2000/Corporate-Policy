@@ -121,7 +121,7 @@ FLOOR_HOOKS.push((s) => {
       q.over = true;
       q.sinceWave = QT_WAVE_EVERY; // first wave lands straight away
       notify({ kind: 'warn', title: 'Quarterly targets missed', body: 'Head office is sending reinforcements. Performance will be discussed.', tag: 'quarterly', duration: 5 });
-      s.hud.showBanner('QUARTERLY TARGETS MISSED', `Reinforcements every ${QT_WAVE_EVERY} seconds until the floor is cleared.`, '#ff6a5a', 3);
+      s.hud.showBanner('QUARTERLY TARGETS MISSED', `Reinforcements every ${QT_WAVE_EVERY}s until cleared.`, '#ff6a5a', 3);
     }
     q.sinceWave += dt;
     if (q.sinceWave >= QT_WAVE_EVERY) {

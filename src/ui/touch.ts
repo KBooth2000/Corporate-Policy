@@ -17,6 +17,8 @@ export interface TouchContext {
   rageActive: boolean;
   /** player currently owns a ranged weapon/throwable (right-stick release fires it) */
   ranged: boolean;
+  /** holdToTap: a toggled heavy charge is latched on (the Heavy button stays lit until tapped again) */
+  heavyLatched?: boolean;
   mode: TouchMode;
 }
 
@@ -26,7 +28,7 @@ export const TAP_SLOP = 7;
 /** Single menu pointer for drag-scrolling lists and sliders (first active finger in menu mode). */
 export const touchPtr = { down: false, x: 0, y: 0, sx: 0, sy: 0, id: -1 };
 
-type Role = 'move' | 'aim' | 'pause' | 'melee' | 'dash' | 'rage' | 'grab' | 'interact' | 'heavy' | 'menu';
+type Role = 'move' | 'aim' | 'pause' | 'melee' | 'dash' | 'rage' | 'grab' | 'interact' | 'heavy' | 'fire' | 'menu';
 interface Finger { id: number; role: Role; sx: number; sy: number; x: number; y: number; bx: number; by: number; t0: number }
 interface Btn { role: Exclude<Role, 'move' | 'aim' | 'menu'>; x: number; y: number; r: number }
 interface Ripple { x: number; y: number; t: number }
@@ -105,7 +107,9 @@ class TouchControls {
     // one finger per role; steal the role from an older finger
     for (const o of this.fingers.values()) if (o.role === f.role && o.id !== f.id) { this.endFinger(o, false); this.fingers.delete(o.id); }
     this.fingers.set(e.pointerId, f);
-    if (f.role === 'dash' || f.role === 'rage' || f.role === 'grab' || f.role === 'interact' || f.role === 'melee' || f.role === 'heavy' || f.role === 'pause') this.ripples.push({ x: f.sx, y: f.sy, t: 0 });
+    if (f.role === 'dash' || f.role === 'rage' || f.role === 'grab' || f.role === 'interact' || f.role === 'melee' || f.role === 'heavy' || f.role === 'fire' || f.role === 'pause') this.ripples.push({ x: f.sx, y: f.sy, t: 0 });
+    // holdToTap: a dedicated Fire button is a tap alternative to the aim stick's hold-and-release shot; pulse so even a very short tap registers
+    if (f.role === 'fire') this.pulse = { action: 'ranged', frames: 3 };
   }
 
   private onMove(e: PointerEvent): void {
@@ -181,7 +185,10 @@ class TouchControls {
     b.push({ role: 'rage', x: X(44 * bs), y: my - Math.round(48 * bs), r: Math.round(19 * bs) });
     b.push({ role: 'grab', x: X(-2 * bs), y: my - Math.round(66 * bs), r: Math.round(19 * bs) });
     if (this.ctx.interact) b.push({ role: 'interact', x: X(52 * bs), y: my - Math.round(98 * bs), r: Math.round(20 * bs) });
-    if (app.settings?.heavyMode === 'button') b.push({ role: 'heavy', x: X(112 * bs), y: my + Math.round(14 * bs), r: Math.round(17 * bs) });
+    const tapMode = !!app.settings?.holdToTap;
+    // holdToTap (spec 2.6): the Heavy button is a charge toggle and a Fire button replaces the aim stick's hold-and-release shot
+    if (app.settings?.heavyMode === 'button' || tapMode) b.push({ role: 'heavy', x: X(112 * bs), y: my + Math.round(14 * bs), r: Math.round(17 * bs) });
+    if (tapMode && this.ctx.ranged) b.push({ role: 'fire', x: X(106 * bs), y: my - Math.round(34 * bs), r: Math.round(21 * bs) });
     b.push({ role: 'pause', x: Math.round(r.W / 2), y: r.safe.t + 14, r: 15 });
     this.btns = b;
   }
@@ -239,6 +246,7 @@ class TouchControls {
         case 'grab': buttons.grab = true; break;
         case 'interact': buttons.interact = true; break;
         case 'heavy': buttons.heavy = true; break;
+        case 'fire': buttons.ranged = true; break;
         case 'pause': buttons.pause = true; break;
         default: break;
       }
@@ -268,7 +276,7 @@ class TouchControls {
     if (this.btns.length === 0) this.computeButtons();
     const r = app.renderer;
     const demo = this.demoState;
-    const held = (role: Role) => (demo?.buttons?.includes(role) ?? false) || [...this.fingers.values()].some((f) => f.role === role);
+    const held = (role: Role) => (demo?.buttons?.includes(role) ?? false) || [...this.fingers.values()].some((f) => f.role === role) || (role === 'heavy' && !!this.ctx.heavyLatched);
     g.save();
     g.globalAlpha = op;
     // sticks
@@ -324,6 +332,7 @@ class TouchControls {
       if (b.role === 'melee') tint = '#f2a53a';
       else if (b.role === 'dash') tint = '#5ec8ff';
       else if (b.role === 'heavy') tint = '#e86a3a';
+      else if (b.role === 'fire') tint = '#ffb000';
       else if (b.role === 'grab') tint = '#9be37b';
       else if (b.role === 'interact') tint = '#ffd34d';
       else if (b.role === 'rage') {
@@ -344,6 +353,7 @@ class TouchControls {
       arc(g, b.x, b.y, rr - 2, Math.PI * 0.05, Math.PI * 0.9, down ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)');
       this.drawSymbol(g, b, rr, down);
       if (b.role === 'rage' && this.ctx.rageActive) ring(g, b.x, b.y, rr + 2, 1, '#ffd34d');
+      if ((b.role === 'fire' || b.role === 'heavy') && app.settings?.holdToTap) drawText(g, b.role === 'fire' ? 'FIRE' : this.ctx.heavyLatched ? 'RELEASE' : 'HEAVY', Math.round(b.x), Math.round(b.y + rr + 3), { color: '#fff', align: 'center', shadow: 'rgba(0,0,0,0.7)' });
       if (b.role === 'interact' && this.ctx.interact) {
         const label = this.ctx.interact;
         const w = measure(label) + 10;
@@ -385,6 +395,13 @@ class TouchControls {
       }
       case 'heavy': {
         g.fillStyle = dark; g.fillRect(x - 5, y - 6, 10, 5); g.fillRect(x - 2, y - 1, 4, 8);
+        break;
+      }
+      case 'fire': {
+        // crosshair
+        g.fillStyle = dark;
+        g.fillRect(x - 8, y, 5, 2); g.fillRect(x + 4, y, 5, 2); g.fillRect(x, y - 8, 2, 5); g.fillRect(x, y + 4, 2, 5);
+        disc(g, x + 1, y + 1, 3, dark); disc(g, x + 1, y + 1, 1, '#fff3c4');
         break;
       }
       case 'rage': {

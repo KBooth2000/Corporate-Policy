@@ -92,7 +92,21 @@ interface Script {
   after?(k: Kit): void;
 }
 
+/** Rage variant (spec 2.2 "unique execution animations"): captions used instead of each script's own pool while the player is raging. */
+const RAGE_CAPS = [
+  'OUT OF OFFICE: PERMANENTLY', 'ANGER MANAGEMENT: DECLINED', 'FEEDBACK DELIVERED. IN PERSON.', 'EXIT INTERVIEW: VIOLENT',
+  'THIS MEETING COULD HAVE BEEN A SCREAM', 'ESCALATED. PERSONALLY.', 'HR WAS NOT CONSULTED', 'CONSTRUCTIVE CRITICISM: 100% CONSTRUCTIVE',
+  'NO FURTHER QUESTIONS', 'PERFORMANCE REVIEW: TERMINAL',
+];
+const RAGE_RED = '#ff4a3a';
+/** Bonus Rage refund on a Rage execution: this fraction of the Rage duration (plus the same fraction of the executionRageExtend stat). */
+export const RAGE_EXEC_BONUS = 0.25;
+
 class Kit {
+  /** True when the player was raging as the execution began: red tint, extra impact frame, Rage captions, +25% Rage refund. */
+  rage = false;
+  /** App frames at which the extra (second) Rage impact frame lands. */
+  rageFlashes: number[] = [];
   t = 0;
   n = 0;
   dur: number;
@@ -126,7 +140,8 @@ class Kit {
     this.v0 = { x: vc.x, y: vc.y }; this.p0 = { x: pl.x, y: pl.y };
     this.v = { ...this.v0 }; this.p = { ...this.p0 };
     this.vFace = Math.atan2(-this.rig.f.y, -this.rig.f.x);
-    this.cap = script.caps[Math.floor(fxRng.next() * script.caps.length)];
+    this.rage = ((pl as unknown as { raging?: number }).raging ?? 0) > 0;
+    this.cap = (this.rage ? RAGE_CAPS : script.caps)[Math.floor(fxRng.next() * (this.rage ? RAGE_CAPS : script.caps).length)];
     this.lights0 = w.forcedDarkness;
     script.setup?.(this);
     // hide the real victim: the cutscene draws it
@@ -146,6 +161,14 @@ class Kit {
 
   /** Impact frame: white flash + hit-stop + shake + rumble. */
   impact(mag: number, hold = 0.07, flash = 0.75): void {
+    if (this.rage) {
+      // Rage variant: harder hit, longer freeze, a second impact frame a few frames later and a red burst
+      mag *= 1.3; hold *= 1.4;
+      this.rageFlashes.push(app.frame + 6);
+      if (this.rageFlashes.length > 4) this.rageFlashes.shift();
+      bloodBurst(this.w.particles, this.v.x, this.v.y - 10, fxRng.range(0, Math.PI * 2), 8, room(this.w, this.v.x, this.v.y), 16);
+      if (this.bangs.length < 3) this.bang(this.v.x, this.v.y - 18, fxRng.pick(['RAGE!', 'CRUNCH!', 'OUT!']), RAGE_RED);
+    }
     this.flashMag = Math.min(0.8, flash); this.flashF = app.frame;
     this.w.hitstop = Math.max(this.w.hitstop, hold);
     app.renderer.shake(mag, 0.28);
@@ -192,7 +215,17 @@ class Kit {
     if (!w.isWalkablePx(pl.x, pl.y)) { pl.x = this.p0.x; pl.y = this.p0.y; }
     pl.setAnim('idle', true);
     this.finish();
+    if (this.rage) this.rageRefund();
     this.script.after?.(this);
+  }
+
+  /** Rage variant bonus: executing mid-Rage refunds 25% of a Rage's duration (and 25% extra on any execution-extend effect). */
+  private rageRefund(): void {
+    const p = this.pl as unknown as { raging: number; stats: { rageDuration: number; executionRageExtend: number } };
+    if (!(p.raging > 0)) return;
+    const bonus = RAGE_EXEC_BONUS * (p.stats.rageDuration + p.stats.executionRageExtend);
+    p.raging += bonus;
+    this.w.floatText(this.pl.x, this.pl.y - 40, '+' + bonus.toFixed(1) + 's RAGE', RAGE_RED);
   }
 
   render(g: Ctx): void {
@@ -204,26 +237,49 @@ class Kit {
   renderScreen(g: Ctx): void {
     const r = app.renderer;
     this.script.screen?.(this, g, r.W, r.H);
+    if (this.rage) rageTint(g, r.W, r.H, Math.min(1, this.t * 8) * Math.min(1, Math.max(0, (this.dur - this.t) * 6 + 0.35)));
     if (this.full) {
       letterbox(g, r.W, r.H, this.letter);
-      if (this.capShown >= 0) caption(g, r.W, r.H, this.cap, this.capShown * 1.4 + 0.02);
+      if (this.capShown >= 0) caption(g, r.W, r.H, this.cap, this.capShown * 1.4 + 0.02, this.rage ? RAGE_RED : undefined);
     }
     for (const b of this.bangs) { const f = r.worldToFrame(b.x, b.y); bang(g, f.x, f.y, b.text, b.t / 0.5, b.col); }
     flashFrame(g, r.W, r.H, this.flashMag * Math.max(0, 1 - (app.frame - this.flashF) / 5));
+    // Rage: extra impact frames, red-white
+    for (const f of this.rageFlashes) {
+      const k = (app.frame - f) / 4;
+      if (k < 0 || k >= 1) continue;
+      g.globalAlpha = 0.6 * (1 - k); g.fillStyle = '#ff5a40'; g.fillRect(0, 0, r.W, r.H); g.globalAlpha = 1;
+    }
   }
 
   toCutscene(): Cutscene {
     const k = this;
-    const cs: Cutscene & { hideHud?: boolean } = {
+    const cs: Cutscene & { hideHud?: boolean; caption?: string; rage?: boolean } = {
       update: (dt) => k.update(dt),
       render: (g) => k.render(g),
       renderScreen: (g) => k.renderScreen(g),
       hideHud: this.full,
+      caption: this.cap,   // exposed for QA (tools/gaps-test.mjs)
+      rage: this.rage,
     };
     Object.defineProperty(cs, 'camera', { get: () => (k.full && k.cam ? k.cam : undefined), enumerable: true });
     Object.defineProperty(cs, 'zoom', { get: () => (k.full ? k.zoom : 1), enumerable: true });
     return cs;
   }
+}
+
+/** Rage variant screen treatment: red wash plus a stepped (pixel-banded) red vignette that pulses. */
+function rageTint(g: Ctx, W: number, H: number, k: number): void {
+  if (k <= 0.01) return;
+  const pulse = 0.85 + 0.15 * Math.sin(app.time * 14);
+  g.fillStyle = '#c0140a';
+  g.globalAlpha = 0.14 * k; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 6; i++) {
+    g.globalAlpha = (0.34 - i * 0.05) * k * pulse;
+    g.fillRect(0, i * 8, W, 8); g.fillRect(0, H - i * 8 - 8, W, 8);
+    g.fillRect(i * 8, 0, 8, H); g.fillRect(W - i * 8 - 8, 0, 8, H);
+  }
+  g.globalAlpha = 1;
 }
 
 function register(type: ExecType, script: Script): void {
